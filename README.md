@@ -1,4 +1,5 @@
 # ESP32-S2 Hybrid Macropad (HID + HomeKit)
+# Assisted/Created by Google Antigravity
 
 This project is a custom 8-key Macropad + Rotary Encoder built on the **ESP32-S2** platform. It uniquely combines **USB-HID** keyboard functionality with **Apple HomeKit** smart home control, allowing each button to be dynamically configured as either a macro key or a smart home trigger.
 
