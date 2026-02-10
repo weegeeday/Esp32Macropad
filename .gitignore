@@ -1,0 +1,29 @@
+# PlatformIO
+.pio
+.cache
+.pioenvs
+.piolibdeps
+*.bin
+*.elf
+*.o
+*.a
+*.d
+*.map
+compile_commands.json
+compile_commands.json.bak
+
+# Logs
+build_log*.txt
+
+# VS Code - Ignore local machine settings but keep shared configs
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/c_cpp_properties.json
+.vscode/ipch
+.vscode/.browse.c_cpp.db*
+
+# OS
+.DS_Store
+Thumbs.db
