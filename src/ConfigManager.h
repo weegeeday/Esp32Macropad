@@ -2,6 +2,7 @@
 #define CONFIG_MANAGER_H
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
 
 #define MAX_BUTTONS 8
 
@@ -66,6 +67,12 @@ public:
     if (cmd.length() == 0)
       return;
 
+    // CMD: GET_CONFIG
+    if (cmd.equalsIgnoreCase("GET_CONFIG")) {
+      printConfig();
+      return;
+    }
+
     // CMD: RESET
     if (cmd.equalsIgnoreCase("RESET")) {
       loadDefaults();
@@ -100,7 +107,45 @@ public:
       return;
     }
 
+    // CMD: SET_BASE R <r> G <g> B <b>
+    if (cmd.startsWith("SET_BASE")) {
+      int r, g, b;
+      int scanned = sscanf(cmd.c_str(), "SET_BASE R %d G %d B %d", &r, &g, &b);
+      if (scanned == 3) {
+        config.baseColor[0] = (uint8_t)r;
+        config.baseColor[1] = (uint8_t)g;
+        config.baseColor[2] = (uint8_t)b;
+        save();
+        Serial.println("OK: Updated Base Color");
+      }
+      return;
+    }
+
     Serial.println("ERR: Unknown Command");
+  }
+
+  void printConfig() {
+    JsonDocument doc;
+
+    JsonArray baseColor = doc["baseColor"].to<JsonArray>();
+    baseColor.add(config.baseColor[0]);
+    baseColor.add(config.baseColor[1]);
+    baseColor.add(config.baseColor[2]);
+
+    JsonArray buttons = doc["buttons"].to<JsonArray>();
+    for (int i = 0; i < MAX_BUTTONS; i++) {
+      JsonObject btn = buttons.add<JsonObject>();
+      btn["type"] = config.buttons[i].type;
+      btn["value"] = config.buttons[i].value;
+
+      JsonArray btnColor = btn["color"].to<JsonArray>();
+      btnColor.add(config.buttons[i].color[0]);
+      btnColor.add(config.buttons[i].color[1]);
+      btnColor.add(config.buttons[i].color[2]);
+    }
+
+    serializeJson(doc, Serial);
+    Serial.println(); // Add newline for simpler parsing
   }
 };
 
