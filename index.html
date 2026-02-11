@@ -82,6 +82,32 @@
                 </svg>
                 Connect
             </button>
+            <div class="relative">
+                <button id="wifiBtn" disabled
+                    class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+                    </svg>
+                </button>
+                <div id="wifiDropdown"
+                    class="hidden absolute top-full right-0 mt-2 w-72 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl p-4 z-50 flex flex-col gap-3">
+                    <h3 class="text-sm font-semibold text-slate-300">WiFi Configuration</h3>
+                    <div>
+                        <input type="text" id="wifiSsid" placeholder="SSID"
+                            class="w-full bg-slate-900/50 border border-slate-600 rounded px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <input type="password" id="wifiPass" placeholder="Password"
+                            class="w-full bg-slate-900/50 border border-slate-600 rounded px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <button id="saveWifiBtn"
+                        class="w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded transition-colors">
+                        Save Credentials
+                    </button>
+                </div>
+            </div>
             <button id="refreshBtn"
                 class="hidden px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all"
                 title="Refresh Config">
@@ -114,6 +140,8 @@
                 <span class="text-sm text-slate-400">Base Color</span>
                 <input type="color" id="baseColorPicker" value="#000000">
             </div>
+
+
 
             <div id="statusMessage" class="text-sm text-slate-500 font-mono h-6 transition-colors duration-300">Ready to
                 connect...</div>
@@ -204,11 +232,25 @@
         const editorColor = document.getElementById('editorColor');
         const editorColorHex = document.getElementById('editorColorHex');
         const saveBtn = document.getElementById('saveBtn');
+        const wifiBtn = document.getElementById('wifiBtn');
+        const wifiDropdown = document.getElementById('wifiDropdown');
 
         // --- Initialization ---
         renderGrid();
 
         // --- Event Listeners ---
+        wifiBtn.addEventListener('click', (e) => {
+            if (wifiBtn.disabled) return;
+            wifiDropdown.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!wifiBtn.contains(e.target)) {
+                wifiDropdown.classList.add('hidden');
+            }
+        });
+
         connectBtn.addEventListener('click', async () => {
             if (port) {
                 // Disconnect logic if needed, usually just reload page for simple Web Serial apps
@@ -226,6 +268,7 @@
                 connectBtn.classList.replace('bg-blue-600', 'bg-red-600');
                 connectBtn.classList.replace('hover:bg-blue-500', 'hover:bg-red-500');
                 refreshBtn.classList.remove('hidden');
+                wifiBtn.disabled = false;
 
                 setStatus('Connected', 'green');
 
@@ -301,6 +344,24 @@
 
             // Re-fetch to confirm
             setTimeout(() => writeToSerial("GET_CONFIG\n"), 200);
+        });
+
+        // WiFi Save
+        document.getElementById('saveWifiBtn').addEventListener('click', async () => {
+            const ssid = document.getElementById('wifiSsid').value;
+            const pass = document.getElementById('wifiPass').value;
+
+            if (!ssid || !pass) {
+                setStatus('SSID and Password required', 'red');
+                return;
+            }
+
+            const hexSsid = xorEncrypt(ssid);
+            const hexPass = xorEncrypt(pass);
+
+            const cmd = `SET_WIFI ${hexSsid} ${hexPass}\n`;
+            setStatus('Sending WiFi Credentials...', 'blue');
+            await writeToSerial(cmd);
         });
 
         // --- Core Functions ---
@@ -458,6 +519,15 @@
                 g: parseInt(result[2], 16),
                 b: parseInt(result[3], 16)
             } : null;
+        }
+
+        function xorEncrypt(input) {
+            let output = "";
+            for (let i = 0; i < input.length; i++) {
+                const charCode = input.charCodeAt(i) ^ 0xAA;
+                output += charCode.toString(16).padStart(2, '0').toUpperCase();
+            }
+            return output;
         }
 
     </script>
