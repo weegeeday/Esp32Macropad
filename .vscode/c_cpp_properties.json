@@ -9,8 +9,8 @@
             "name": "PlatformIO",
             "includePath": [
                 "C:/Users/simon/Desktop/GG Hiver 2026/Prototype/Macropad/src",
-                "C:/Users/simon/.platformio/packages/framework-arduinoespressif32/libraries/Preferences/src",
                 "C:/Users/simon/Desktop/GG Hiver 2026/Prototype/Macropad/.pio/libdeps/esp32-s2-saola-1/Adafruit NeoPixel",
+                "C:/Users/simon/.platformio/packages/framework-arduinoespressif32/libraries/Preferences/src",
                 "C:/Users/simon/Desktop/GG Hiver 2026/Prototype/Macropad/.pio/libdeps/esp32-s2-saola-1/ArduinoJson/src",
                 "C:/Users/simon/Desktop/GG Hiver 2026/Prototype/Macropad/.pio/libdeps/esp32-s2-saola-1/Adafruit TinyUSB Library/src",
                 "C:/Users/simon/Desktop/GG Hiver 2026/Prototype/Macropad/.pio/libdeps/esp32-s2-saola-1/SdFat - Adafruit Fork/src",
@@ -237,8 +237,8 @@
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
                     "C:/Users/simon/Desktop/GG Hiver 2026/Prototype/Macropad/src",
-                    "C:/Users/simon/.platformio/packages/framework-arduinoespressif32/libraries/Preferences/src",
                     "C:/Users/simon/Desktop/GG Hiver 2026/Prototype/Macropad/.pio/libdeps/esp32-s2-saola-1/Adafruit NeoPixel",
+                    "C:/Users/simon/.platformio/packages/framework-arduinoespressif32/libraries/Preferences/src",
                     "C:/Users/simon/Desktop/GG Hiver 2026/Prototype/Macropad/.pio/libdeps/esp32-s2-saola-1/ArduinoJson/src",
                     "C:/Users/simon/Desktop/GG Hiver 2026/Prototype/Macropad/.pio/libdeps/esp32-s2-saola-1/Adafruit TinyUSB Library/src",
                     "C:/Users/simon/Desktop/GG Hiver 2026/Prototype/Macropad/.pio/libdeps/esp32-s2-saola-1/SdFat - Adafruit Fork/src",

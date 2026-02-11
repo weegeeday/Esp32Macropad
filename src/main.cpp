@@ -3,19 +3,18 @@
 #include <Arduino.h>
 #include <HomeSpan.h>
 
-
 #include "ConfigManager.h"
 #include "MacroButton.h"
 #include "MacropadLight.h"
 
+#include "RotaryEncoder.h"
 
 // Pin Definitions
 #ifdef PIN_NEOPIXEL
 #undef PIN_NEOPIXEL
 #endif
-#define MACROPAD_NEOPIXEL                                                      \
-  12 // Using specific name to avoid redefining standard PIN_NEOPIXEL if it
-     // leaks
+#define MACROPAD_NEOPIXEL 12
+// Using specific name to avoid redefining standard PIN_NEOPIXEL if it leaks
 
 // Rotary Encoder
 #define PIN_ENC_A 5
@@ -30,6 +29,8 @@ const int buttonPins[8] = {34, 35, 36, 37, 38, 39, 40, 41};
 Adafruit_NeoPixel pixels(NUM_PIXELS, MACROPAD_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 ConfigManager globalConfig;
 Adafruit_USBD_HID usb_hid;
+RotaryEncoder encoder(PIN_ENC_A, PIN_ENC_B, PIN_ENC_SW);
+MacroButton *buttons[8];
 
 // HID Report Descriptor for a standard keyboard
 uint8_t const desc_hid_report[] = {TUD_HID_REPORT_DESC_KEYBOARD()};
@@ -90,31 +91,30 @@ void setup() {
   new Characteristic::Identify();
 
   // Light Accessory (Global Control)
-  // We can attach it to the Bridge Accessory or a separate one.
-  // Attaching to Bridge is simpler for now.
   new MacropadLight();
 
   // Button Accessories
-  // Each button needs its own Accessory if we want them to be distinct tiles
-  // easily? Or one Accessory with multiple Services? HomeKit allows both. One
-  // Accessory with multiple Services is cleaner in the UI sometimes, but
-  // distinct Accessories allows moving them to different Rooms if needed
-  // (unlikely for a macropad). Let's do one "Buttons" Accessory with multiple
-  // triggers.
-
   new SpanAccessory();
   new Service::AccessoryInformation();
   new Characteristic::Identify();
   new Characteristic::Name("Macropad Buttons");
 
   for (int i = 0; i < 8; i++) {
-    // Pin, Index, PixelIndex
-    new MacroButton(buttonPins[i], i, i);
+    // Buttons are now stored globally to be polled in loop
+    buttons[i] = new MacroButton(buttonPins[i], i, i);
   }
+
+  encoder.begin();
 }
 
 void loop() {
   homeSpan.poll();
+  encoder.poll();
+
+  for (int i = 0; i < 8; i++) {
+    if (buttons[i])
+      buttons[i]->loop();
+  }
 
   // Check config updates from Serial
   if (Serial.available()) {

@@ -41,15 +41,18 @@ public:
     config.baseColor[2] = 0;
 
     for (int i = 0; i < MAX_BUTTONS; i++) {
+      // Default to HID for all for easier initial testing, or keep mix?
+      // Let's keep the mix but ensure valid HID codes are set for all just in
+      // case.
       config.buttons[i].type = (i % 2 == 0) ? BUTTON_HID : BUTTON_HOMEKIT;
-      config.buttons[i].value = i;
+
+      // 0x04 is 'a', 0x05 is 'b', etc.
+      config.buttons[i].value = 0x04 + i;
+
       config.buttons[i].color[0] = 0;
       config.buttons[i].color[1] = 50;
       config.buttons[i].color[2] = 0;
     }
-
-    // Example: Button 0 is HID 'A' (Usage 0x04)
-    config.buttons[0].value = 0x04;
   }
 
   bool load() {
