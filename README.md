@@ -1,7 +1,7 @@
 # ESP32-S2 Hybrid Macropad (HID + HomeKit)
 # Assisted/Created by Google Antigravity
 
-This project is a custom 8-key Macropad + Rotary Encoder built on the **ESP32-S2** platform. It uniquely combines **USB-HID** keyboard functionality with **Apple HomeKit** smart home control, allowing each button to be dynamically configured as either a macro key or a smart home trigger.
+This project is a custom 8-key Macropad + Rotary Encoder built on the **ESP32-S2** platform. It combines **USB-HID** keyboard functionality with **Apple HomeKit** smart home control, allowing each button to be dynamically configured as either a macro key or a smart home trigger.
 
 ## Features
 
@@ -17,7 +17,6 @@ This project is a custom 8-key Macropad + Rotary Encoder built on the **ESP32-S2
     *   Settings are saved to **NVS Flash** and persist across reboots.
 *   **Rotary Encoder**:
     *   Currently mapped to Volume/Media control (HID).
-*   **Simulation Ready**: Includes `wokwi.toml` and `diagram.json` for full simulation in VS Code.
 
 ## Hardware Pinout
 | Component       | GPIO Pin(s)       | Note                                |
@@ -41,43 +40,13 @@ This project is a custom 8-key Macropad + Rotary Encoder built on the **ESP32-S2
 4.  Connect your board in Download Mode (hold Boot, press Reset).
 5.  Click **PlatformIO Upload** (arrow) to flash.
 
-## Configuration (Serial API)
 
-Connect to the board via a Serial Monitor (baud `115200`).
-
-### Command Format
-`SET_BTN <index> TYPE <mode> VAL <value> R <red> G <green> B <blue>`
-
-*   **`<index>`**: Button number (0-7).
-*   **`<mode>`**:
-    *   `0`: **HID Mode** (Keyboard).
-    *   `1`: **HomeKit Mode** (Smart Switch).
-*   **`<value>`**:
-    *   For HID: USB HID Usage ID (e.g., `4`='a', `5`='b', `40`='Enter').
-    *   For HomeKit: Currently unused (can be 0), simply triggers the switch event.
-*   **`R G B`**: LED Color (0-255).
-
-### Examples
-
-**1. Set Button 0 to HomeKit Mode (Red LED):**
-```bash
-SET_BTN 0 TYPE 1 VAL 0 R 255 G 0 B 0
-```
-*Result*: Button 1 in HomeKit. Pressing it triggers an automation. LED is Red.
-
-**2. Set Button 1 to HID Mode 'Spacebar' (Blue LED):**
-```bash
-SET_BTN 1 TYPE 0 VAL 44 R 0 G 0 B 255
-```
-*Result*: Pressing Button 2 types a 'Space'. LED is Blue.
-
-**3. Reset to Defaults:**
-```bash
-RESET
-```
+## Configuratiom (WebApp)
+Use the companion [web app](https://weegeeday.github.io/Esp32Macropad/) to configure it, using webSerial.
 
 ## HomeKit Pairing
-1.  Open the **Home** app on iOS.
-2.  Tap **Add Accessory** -> **More options...**
-3.  Select **Macropad Bridge**.
-4.  Enter Setup Code: `466-37-726` (Default HomeSpan code).
+1. Use the [web app](https://weegeeday.github.io/Esp32Macropad/) to configure Wifi settings.
+2.  Open the **Home** app on iOS.
+3.  Tap **Add Accessory** -> **More options...**
+4.  Select **Macropad Bridge**.
+5.  Enter Setup Code: `466-37-726` (Default HomeSpan code).
