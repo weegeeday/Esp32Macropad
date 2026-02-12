@@ -176,6 +176,37 @@
                     </div>
                 </div>
 
+                <!-- Modifiers (HID Only) -->
+                <div id="modifiersSection" class="space-y-2 hidden">
+                    <label class="text-xs text-slate-400 uppercase tracking-wider">Modifiers</label>
+                    <div class="flex flex-wrap gap-2">
+                        <label
+                            class="flex items-center gap-2 bg-slate-900/50 px-3 py-2 rounded-md border border-slate-700 cursor-pointer hover:bg-slate-800 transition">
+                            <input type="checkbox" data-mod="1"
+                                class="modifier-cb w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500">
+                            <span class="text-sm text-slate-300">Ctrl</span>
+                        </label>
+                        <label
+                            class="flex items-center gap-2 bg-slate-900/50 px-3 py-2 rounded-md border border-slate-700 cursor-pointer hover:bg-slate-800 transition">
+                            <input type="checkbox" data-mod="2"
+                                class="modifier-cb w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500">
+                            <span class="text-sm text-slate-300">Shift</span>
+                        </label>
+                        <label
+                            class="flex items-center gap-2 bg-slate-900/50 px-3 py-2 rounded-md border border-slate-700 cursor-pointer hover:bg-slate-800 transition">
+                            <input type="checkbox" data-mod="4"
+                                class="modifier-cb w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500">
+                            <span class="text-sm text-slate-300">Alt</span>
+                        </label>
+                        <label
+                            class="flex items-center gap-2 bg-slate-900/50 px-3 py-2 rounded-md border border-slate-700 cursor-pointer hover:bg-slate-800 transition">
+                            <input type="checkbox" data-mod="8"
+                                class="modifier-cb w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500">
+                            <span class="text-sm text-slate-300">Gui</span>
+                        </label>
+                    </div>
+                </div>
+
                 <!-- Value Input -->
                 <div class="space-y-2">
                     <label class="text-xs text-slate-400 uppercase tracking-wider flex justify-between">
@@ -213,7 +244,7 @@
         let keepReading = false;
         let config = {
             baseColor: [0, 0, 0],
-            buttons: Array(8).fill().map((_, i) => ({ type: 0, value: 0, color: [0, 0, 0] }))
+            buttons: Array(8).fill().map((_, i) => ({ type: 0, value: 0, modifiers: 0, color: [0, 0, 0] }))
         };
         let selectedBtnIndex = -1;
 
@@ -228,6 +259,8 @@
         const editorOverlay = document.getElementById('editorDisabledOverlay');
         const editorIndexLabel = document.getElementById('editorBtnIndex');
         const typeBtns = document.querySelectorAll('.type-btn');
+        const modifiersSection = document.getElementById('modifiersSection');
+        const modifierCbs = document.querySelectorAll('.modifier-cb');
         const editorValue = document.getElementById('editorValue');
         const editorColor = document.getElementById('editorColor');
         const editorColorHex = document.getElementById('editorColorHex');
@@ -290,6 +323,8 @@
         typeBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 if (selectedBtnIndex === -1) return;
+
+                // Update UI state
                 typeBtns.forEach(b => {
                     b.classList.remove('bg-blue-600', 'text-white', 'border-blue-500');
                     b.classList.add('border-slate-600');
@@ -297,8 +332,25 @@
                 btn.classList.add('bg-blue-600', 'text-white', 'border-blue-500');
                 btn.classList.remove('border-slate-600');
 
-                config.buttons[selectedBtnIndex].type = parseInt(btn.dataset.type);
+                const newType = parseInt(btn.dataset.type);
+                config.buttons[selectedBtnIndex].type = newType;
+
+                updateEditorVisibility(newType);
                 updateValueHint();
+            });
+        });
+
+        // Editor: Modifiers
+        modifierCbs.forEach(cb => {
+            cb.addEventListener('change', () => {
+                if (selectedBtnIndex === -1) return;
+
+                // Re-calculate bitmask
+                let mask = 0;
+                modifierCbs.forEach(c => {
+                    if (c.checked) mask |= parseInt(c.dataset.mod);
+                });
+                config.buttons[selectedBtnIndex].modifiers = mask;
             });
         });
 
@@ -335,8 +387,9 @@
             if (selectedBtnIndex === -1) return;
 
             const btn = config.buttons[selectedBtnIndex];
-            // CMD: SET_BTN <idx> TYPE <type> VAL <val> R <r> G <g> B <b>
-            const cmd = `SET_BTN ${selectedBtnIndex} TYPE ${btn.type} VAL ${btn.value} R ${btn.color[0]} G ${btn.color[1]} B ${btn.color[2]}\n`;
+            // CMD: SET_BTN <idx> TYPE <type> VAL <val> MOD <mod> R <r> G <g> B <b>
+            // Include MOD even if 0, firmware handles it
+            const cmd = `SET_BTN ${selectedBtnIndex} TYPE ${btn.type} VAL ${btn.value} MOD ${btn.modifiers || 0} R ${btn.color[0]} G ${btn.color[1]} B ${btn.color[2]}\n`;
 
             setStatus(`Saving Button ${selectedBtnIndex}...`, 'blue');
             await writeToSerial(cmd);
@@ -415,7 +468,23 @@
                 }
             });
 
+            // Modifiers UI
+            const mods = btn.modifiers || 0;
+            modifierCbs.forEach(cb => {
+                const bit = parseInt(cb.dataset.mod);
+                cb.checked = (mods & bit) !== 0;
+            });
+
+            updateEditorVisibility(btn.type);
             updateValueHint();
+        }
+
+        function updateEditorVisibility(type) {
+            if (type === 0) { // HID
+                modifiersSection.classList.remove('hidden');
+            } else {
+                modifiersSection.classList.add('hidden');
+            }
         }
 
         function updateValueHint() {
