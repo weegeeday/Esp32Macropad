@@ -32,6 +32,8 @@ Adafruit_USBD_HID usb_hid;
 RotaryEncoder encoder(PIN_ENC_A, PIN_ENC_B, PIN_ENC_SW);
 MacroButton *buttons[8];
 
+String xorDecrypt(String hexInput);
+
 // HID Report Descriptor for a standard keyboard
 uint8_t const desc_hid_report[] = {TUD_HID_REPORT_DESC_KEYBOARD()};
 
@@ -119,6 +121,44 @@ void loop() {
   // Check config updates from Serial
   if (Serial.available()) {
     String cmd = Serial.readStringUntil('\n');
-    globalConfig.processSerialCommand(cmd);
+    cmd.trim();
+
+    if (cmd.startsWith("SET_WIFI")) {
+      // SET_WIFI <HEX_SSID> <HEX_PASS>
+      int firstSpace = cmd.indexOf(' ');
+      int secondSpace = cmd.indexOf(' ', firstSpace + 1);
+
+      if (firstSpace > 0 && secondSpace > 0) {
+        String hexSSID = cmd.substring(firstSpace + 1, secondSpace);
+        String hexPass = cmd.substring(secondSpace + 1);
+
+        String ssid = xorDecrypt(hexSSID);
+        String pass = xorDecrypt(hexPass);
+
+        if (ssid.length() > 0 && pass.length() > 0) {
+          homeSpan.setWifiCredentials(ssid.c_str(), pass.c_str());
+          Serial.println("OK: WiFi Credentials Set");
+        } else {
+          Serial.println("ERR: Decrypt Failed");
+        }
+      } else {
+        Serial.println("ERR: Invalid Format");
+      }
+    } else {
+      globalConfig.processSerialCommand(cmd);
+    }
   }
+}
+
+String xorDecrypt(String hexInput) {
+  String output = "";
+  if (hexInput.length() % 2 != 0)
+    return "";
+
+  for (int i = 0; i < hexInput.length(); i += 2) {
+    String byteString = hexInput.substring(i, i + 2);
+    char c = (char)strtol(byteString.c_str(), NULL, 16);
+    output += (char)(c ^ 0xAA);
+  }
+  return output;
 }

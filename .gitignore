@@ -14,6 +14,7 @@ compile_commands.json.bak
 
 # Logs
 build_log*.txt
+*.log
 
 # VS Code - Ignore local machine settings but keep shared configs
 .vscode/*
