@@ -13,14 +13,19 @@ extern USBHIDKeyboard Keyboard;
 #define MACRO_OP_RELEASE 0x02
 #define MACRO_OP_DELAY 0x03
 
-class MacroButton : public Service::StatelessProgrammableSwitch {
+class MacroButton {
   int pin;
   int index;
   SpanCharacteristic *switchEvent;
 
-  // Debounce
+  // Debounce & Multi-click state for HomeKit mode
   unsigned long lastPressTime = 0;
+  unsigned long pressStartTime = 0;
+  unsigned long lastReleaseTime = 0;
   bool isPressed = false;
+  bool isLongPressTriggered = false;
+  int clickCount = 0;
+  bool waitingForDouble = false;
 
   // Macro Playback State
   bool isPlayingMacro = false;
@@ -29,41 +34,76 @@ class MacroButton : public Service::StatelessProgrammableSwitch {
   unsigned long waitDuration = 0;
 
 public:
-  MacroButton(int pin, int index)
-      : Service::StatelessProgrammableSwitch(), pin(pin), index(index) {
-    // Only initialize HomeKit char if mode is HOMEKIT
-    // Ideally we should create this Service conditionally in main.cpp
-    // But for simplicity/hybrid, we can have the service always present
-    // and just not update it if in HID mode?
-    // HomeSpan doesn't easily allow dynamic addition/removal of Services
-    // without reboot + re-init. So we will instantiate it, but only update
-    // *switchEvent* if type is HK.
-
-    switchEvent = new Characteristic::ProgrammableSwitchEvent();
+  MacroButton(int pin, int index, SpanCharacteristic *switchEvent = NULL)
+      : pin(pin), index(index), switchEvent(switchEvent) {
     pinMode(pin, INPUT_PULLUP);
   }
 
   void loop() {
     handleMacroPlayback(); // Run macro logic every loop
 
+    ButtonConfig &cfg = globalConfig.config.buttons[index];
     bool currentState = digitalRead(pin) == LOW; // Active LOW
     unsigned long now = millis();
 
+    // 1. Long Press / Hold Detection for HomeKit mode while button is held
+    if (cfg.type == BUTTON_HOMEKIT && isPressed && !isLongPressTriggered) {
+      if (now - pressStartTime >= 450) { // Held for >= 450ms
+        isLongPressTriggered = true;
+        waitingForDouble = false;
+        clickCount = 0;
+        if (switchEvent != NULL) {
+          switchEvent->setVal(2); // HomeKit LONG PRESS (Hold)
+        }
+      }
+    }
+
+    // 2. Double Click Timeout / Single Click Finalizer for HomeKit Mode
+    if (cfg.type == BUTTON_HOMEKIT && waitingForDouble) {
+      if (now - lastReleaseTime > 250) { // 250ms timeout after first click
+        waitingForDouble = false;
+        if (clickCount == 1 && switchEvent != NULL) {
+          switchEvent->setVal(0); // HomeKit SINGLE PRESS
+        }
+        clickCount = 0;
+      }
+    }
+
+    // 3. State Change Detection (Press / Release)
     if (currentState != isPressed) {
-      // State change
       if (currentState) {
-        // PRESSED
-        if (now - lastPressTime > 50) { // Debounce 50ms
-          onPress();
+        // PRESSED (Button down)
+        if (now - lastPressTime > 40) { // Debounce 40ms
           isPressed = true;
+          pressStartTime = now;
+          isLongPressTriggered = false;
           lastPressTime = now;
+          onPress();
         }
       } else {
-        // RELEASED
-        if (now - lastPressTime > 50) {
-          onRelease();
+        // RELEASED (Button up)
+        if (now - lastPressTime > 40) {
           isPressed = false;
+          onRelease();
           lastPressTime = now;
+
+          if (cfg.type == BUTTON_HOMEKIT) {
+            if (!isLongPressTriggered) {
+              clickCount++;
+              lastReleaseTime = now;
+
+              if (clickCount == 2) {
+                waitingForDouble = false;
+                clickCount = 0;
+                if (switchEvent != NULL) {
+                  switchEvent->setVal(1); // HomeKit DOUBLE PRESS
+                }
+              } else {
+                waitingForDouble = true;
+              }
+            }
+            isLongPressTriggered = false;
+          }
         }
       }
     }
@@ -72,17 +112,11 @@ public:
   void onPress() {
     ButtonConfig &cfg = globalConfig.config.buttons[index];
 
-    if (cfg.type == BUTTON_HOMEKIT) {
-      // Single Press Event
-      switchEvent->setVal(0);
-    } else if (cfg.type == BUTTON_HID) {
+    if (cfg.type == BUTTON_HID) {
       // HID Keyboard press with modifiers
       KeyReport report = {0};
       report.modifiers = cfg.modifiers;
       report.keys[0] = (uint8_t)cfg.value;
-
-      // cfg.modifiers is directly compatible with HID modifier bitmap
-      // (Ctrl=1, Shift=2, Alt=4, Gui=8, etc)
       Keyboard.sendReport(&report);
     } else if (cfg.type == BUTTON_MACRO) {
       startMacro(cfg.value);
@@ -96,9 +130,6 @@ public:
       // Release key
       Keyboard.releaseAll();
     }
-    // Note: We don't stop macros on release, they usually play to completion
-    // unless we want hold-to-repeat or stop-on-release logic?
-    // For now, let's assume "fire and forget" or "run until end".
   }
 
   void startMacro(int offset) {
@@ -158,24 +189,6 @@ public:
         }
         uint8_t mod = globalConfig.config.macroBuffer[macroPtr++];
         uint8_t key = globalConfig.config.macroBuffer[macroPtr++];
-
-        // For simple releaseAll, we might use keyboardRelease(0)
-        // But if we want specific key release, we'd need to track state.
-        // HID keyboardReport is "current state".
-        // So "Release" usually means "send report without this key".
-        // But simplify: If we want to simulate "Press A, Release A",
-        // OP_PRESS sends [A], OP_RELEASE sends [] (if it's the only key).
-
-        // Simplified Implementation: Release ALL for now?
-        // Or just send empty report?
-        // The opcode has mod+key args, meaning we *could* be specific,
-        // but TinyUSB HID acts on "Report".
-
-        // Workaround: We will just release ALL for this step if it's a
-        // "RELEASE" op logic. Ideally, we should maintain a set of pressed
-        // keys. But for basic macros, usually we do: Press A, Wait, Release,
-        // Wait...
-
         Keyboard.releaseAll();
         break;
       }

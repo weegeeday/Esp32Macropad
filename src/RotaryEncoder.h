@@ -9,8 +9,6 @@ extern USBHIDConsumerControl ConsumerControl;
 class RotaryEncoder {
   int pinA, pinB, pinSW;
   int lastStateA;
-  unsigned long lastButtonPress = 0;
-  bool buttonPressed = false;
 
 public:
   RotaryEncoder(int a, int b, int sw) : pinA(a), pinB(b), pinSW(sw) {}
@@ -23,7 +21,7 @@ public:
   }
 
   void poll() {
-    // Rotation
+    // Quadrature Rotation Processing
     int currentStateA = digitalRead(pinA);
     if (currentStateA != lastStateA && currentStateA == 1) {
       if (digitalRead(pinB) != currentStateA) {
@@ -35,27 +33,11 @@ public:
       }
     }
     lastStateA = currentStateA;
-
-    // Button
-    bool swState = digitalRead(pinSW) == LOW; // Active LOW
-    unsigned long now = millis();
-
-    if (swState && !buttonPressed && (now - lastButtonPress > 50)) {
-      // Press
-      buttonPressed = true;
-      lastButtonPress = now;
-      ConsumerStep(CONSUMER_CONTROL_MUTE);
-    } else if (!swState && buttonPressed && (now - lastButtonPress > 50)) {
-      // Release
-      buttonPressed = false;
-      lastButtonPress = now;
-    }
   }
 
 private:
   void ConsumerStep(uint16_t usage) {
     ConsumerControl.press(usage);
-    // Wait for it to be sent (simple way)
     delay(10);
     ConsumerControl.release();
   }

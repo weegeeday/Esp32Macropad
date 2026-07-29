@@ -22,13 +22,13 @@
 #define PIN_ENC_SW 4
 
 // Buttons
-const int buttonPins[8] = {34, 35, 36, 37, 38, 39, 40, 41};
+const int buttonPins[8] = {34, 35, 36, 37, 38, 41, 39, 40};
 
 ConfigManager globalConfig;
 USBHIDKeyboard Keyboard;
 USBHIDConsumerControl ConsumerControl;
 RotaryEncoder encoder(PIN_ENC_A, PIN_ENC_B, PIN_ENC_SW);
-MacroButton *buttons[8];
+MacroButton *buttons[9];
 
 // OTA Firmware Upload State
 bool isOtaMode = false;
@@ -89,20 +89,28 @@ void setup() {
   new Characteristic::SerialNumber("MP-BRIDGE-01");
   new Characteristic::FirmwareRevision("1.0.0");
 
-  // Create 8 individual Bridged Button Accessories with unique serial numbers for HomeKit
-  for (int i = 0; i < 8; i++) {
-    new SpanAccessory();
-    new Service::AccessoryInformation();
-    new Characteristic::Identify();
-    String btnName = "Macropad Button " + String(i + 1);
-    new Characteristic::Name(btnName.c_str());
-    new Characteristic::Manufacturer("Espressif");
-    new Characteristic::Model("Macropad Button");
-    String sn = "MP-BTN-0" + String(i + 1);
-    new Characteristic::SerialNumber(sn.c_str());
-    new Characteristic::FirmwareRevision("1.0.0");
+  // Dynamically create Bridged Accessories ONLY for buttons configured in HomeKit mode
+  for (int i = 0; i < 9; i++) {
+    int pin = (i == 8) ? PIN_ENC_SW : buttonPins[i];
+    SpanCharacteristic *switchEvent = NULL;
 
-    buttons[i] = new MacroButton(buttonPins[i], i);
+    if (globalConfig.config.buttons[i].type == BUTTON_HOMEKIT) {
+      new SpanAccessory();
+      new Service::AccessoryInformation();
+      new Characteristic::Identify();
+      String btnName = (i == 8) ? "Encoder Click" : ("Macropad Button " + String(i + 1));
+      new Characteristic::Name(btnName.c_str());
+      new Characteristic::Manufacturer("Espressif");
+      new Characteristic::Model((i == 8) ? "Encoder Button" : "Macropad Button");
+      String sn = "MP-BTN-0" + String(i + 1);
+      new Characteristic::SerialNumber(sn.c_str());
+      new Characteristic::FirmwareRevision("1.0.0");
+
+      new Service::StatelessProgrammableSwitch();
+      switchEvent = new Characteristic::ProgrammableSwitchEvent();
+    }
+
+    buttons[i] = new MacroButton(pin, i, switchEvent);
   }
 
   encoder.begin();
@@ -112,7 +120,7 @@ void loop() {
   homeSpan.poll();
   encoder.poll();
 
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 9; i++) {
     if (buttons[i])
       buttons[i]->loop();
   }

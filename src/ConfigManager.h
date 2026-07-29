@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 
-#define MAX_BUTTONS 8
+#define MAX_BUTTONS 9
 #define MAX_MACRO_BYTES 1024
 
 enum ButtonType { BUTTON_HID = 0, BUTTON_HOMEKIT = 1, BUTTON_MACRO = 2 };
