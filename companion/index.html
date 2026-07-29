@@ -4,11 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP-Macropad Companion</title>
+    <title>ESP32 Macropad Companion</title>
     <link rel="icon" type="image/svg+xml"
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%233b82f6'%3E%3Crect width='100' height='100' rx='20' fill='%231e293b'/%3E%3Crect x='20' y='20' width='25' height='25' rx='5' fill='%2360a5fa'/%3E%3Crect x='55' y='20' width='25' height='25' rx='5' fill='%2360a5fa'/%3E%3Crect x='20' y='55' width='25' height='25' rx='5' fill='%2360a5fa'/%3E%3Crect x='55' y='55' width='25' height='25' rx='5' fill='%2360a5fa'/%3E%3C/svg%3E">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
@@ -17,8 +17,8 @@
                         sans: ['Outfit', 'sans-serif'],
                     },
                     colors: {
-                        glass: "rgba(255, 255, 255, 0.05)",
-                        glassBorder: "rgba(255, 255, 255, 0.1)",
+                        glass: "rgba(15, 23, 42, 0.65)",
+                        glassBorder: "rgba(255, 255, 255, 0.08)",
                     }
                 }
             }
@@ -26,271 +26,667 @@
     </script>
     <style>
         body {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            background: radial-gradient(circle at top right, #1e1b4b 0%, #0f172a 100%);
             color: #e2e8f0;
         }
 
         .glass-panel {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }
 
-        .btn-glow:hover {
-            box-shadow: 0 0 15px currentColor;
+        /* Tactical 3D Keycap Styling */
+        .keycap {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            box-shadow: 
+                0 6px 0 0 #020617,
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+            transform: translateY(0);
+            transition: transform 0.1s ease, box-shadow 0.1s ease, border-color 0.1s ease;
         }
 
-        /* Color input styling */
-        input[type="color"] {
-            -webkit-appearance: none;
-            border: none;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            overflow: hidden;
-            background: none;
-            cursor: pointer;
+        .keycap:hover {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 8px 0 0 #020617,
+                0 0 15px rgba(59, 130, 246, 0.25),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
         }
 
-        input[type="color"]::-webkit-color-swatch-wrapper {
-            padding: 0;
+        .keycap:active, .keycap.active {
+            transform: translateY(6px);
+            box-shadow: 
+                0 0px 0 0 #020617,
+                inset 0 1px 3px 0 rgba(0, 0, 0, 0.5);
         }
 
-        input[type="color"]::-webkit-color-swatch {
-            border: none;
-            border-radius: 50%;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .keycap.selected {
+            border-color: rgba(59, 130, 246, 0.8);
+            box-shadow: 
+                0 6px 0 0 #020617,
+                0 0 25px rgba(59, 130, 246, 0.4),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+        }
+
+        .keycap.selected:active {
+            transform: translateY(6px);
+            box-shadow: 
+                0 0px 0 0 #020617,
+                inset 0 1px 3px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.3);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
     </style>
 </head>
 
-<body class="min-h-screen flex flex-col items-center justify-center p-6">
+<body class="min-h-screen flex flex-col items-center p-6 md:p-12">
 
     <!-- Header -->
-    <header class="w-full max-w-4xl mb-8 flex justify-between items-center">
-        <h1
-            class="text-4xl font-light tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
-            ESP-Macropad <span class="font-bold">Companion</span>
-        </h1>
-        <div class="flex gap-4">
-            <button id="connectBtn"
-                class="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all shadow-lg shadow-blue-900/50 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M13 10V3L4 14h7v7l9-11h-7z" />
+    <header class="w-full max-w-5xl mb-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 5h10a2 2 0 012 2v10a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2z" />
                 </svg>
-                Connect
+            </div>
+            <div>
+                <h1 class="text-3xl font-light tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
+                    ESP32-Macropad <span class="font-bold">Companion</span>
+                </h1>
+                <p class="text-xs text-slate-500 font-mono">Web Serial Control & Firmware Center</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3 flex-wrap">
+            <button id="connectBtn"
+                class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-xl transition-all shadow-lg shadow-blue-900/40 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Connect Device
             </button>
+
+            <!-- Firmware Flashing Button -->
+            <button id="otaModalBtn" disabled
+                class="px-4 py-2.5 bg-indigo-950/40 hover:bg-indigo-900/40 text-indigo-300 rounded-xl transition-all border border-indigo-900/50 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Update Firmware
+            </button>
+
             <div class="relative">
                 <button id="wifiBtn" disabled
-                    class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+                    class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition-all border border-slate-700/50 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
                     </svg>
+                    WiFi Setup
                 </button>
                 <div id="wifiDropdown"
-                    class="hidden absolute top-full right-0 mt-2 w-72 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl p-4 z-50 flex flex-col gap-3">
-                    <h3 class="text-sm font-semibold text-slate-300">WiFi Configuration</h3>
+                    class="hidden absolute top-full right-0 mt-3 w-80 bg-slate-900 border border-slate-700/80 rounded-xl shadow-2xl p-5 z-50 flex flex-col gap-4">
+                    <h3 class="text-sm font-semibold text-slate-200">WiFi Credentials Setup</h3>
                     <div>
-                        <input type="text" id="wifiSsid" placeholder="SSID"
-                            class="w-full bg-slate-900/50 border border-slate-600 rounded px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                        <label class="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Network SSID</label>
+                        <input type="text" id="wifiSsid" placeholder="My WiFi Network"
+                            class="w-full bg-slate-950/80 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
                     </div>
                     <div>
-                        <input type="password" id="wifiPass" placeholder="Password"
-                            class="w-full bg-slate-900/50 border border-slate-600 rounded px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                        <label class="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Password</label>
+                        <input type="password" id="wifiPass" placeholder="••••••••"
+                            class="w-full bg-slate-950/80 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
                     </div>
                     <button id="saveWifiBtn"
-                        class="w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded transition-colors">
-                        Save Credentials
+                        class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors shadow-md shadow-blue-950/40">
+                        Upload to Device
                     </button>
                 </div>
             </div>
+
+            <button id="resetBtn" disabled
+                class="px-4 py-2.5 bg-rose-950/30 hover:bg-rose-900/30 text-rose-300 rounded-xl transition-all border border-rose-900/40 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Reset device configuration to factory defaults">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Reset Board
+            </button>
+
             <button id="refreshBtn"
-                class="hidden px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all"
-                title="Refresh Config">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                class="hidden px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition-all border border-slate-700/50"
+                title="Sync Configuration">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
             </button>
         </div>
     </header>
 
-    <main class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
+    <!-- Main Workspace -->
+    <main class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
 
-        <!-- Left Column: Visualizer -->
-        <section class="glass-panel p-8 rounded-2xl flex flex-col items-center gap-6 relative overflow-hidden">
+        <!-- Visualizer Pad Section -->
+        <section class="lg:col-span-3 glass-panel p-8 rounded-2xl flex flex-col items-center gap-6 relative overflow-hidden">
             <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 pointer-events-none"></div>
 
-            <h2 class="text-xl font-semibold text-slate-300 w-full">Device Preview</h2>
-
-            <div class="grid grid-flow-col grid-rows-4 gap-4 bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 shadow-inner overflow-x-auto"
-                id="buttonGrid">
-                <!-- Generated via JS -->
-                <div class="w-16 h-16 rounded-lg bg-slate-700 animate-pulse"></div>
-                <div class="w-16 h-16 rounded-lg bg-slate-700 animate-pulse"></div>
-                <!-- ... -->
+            <div class="w-full flex justify-between items-center">
+                <h2 class="text-xl font-semibold text-slate-300">Device Layout Preview</h2>
+                <div class="flex items-center gap-2">
+                    <span id="connectionBadge" class="w-2.5 h-2.5 rounded-full bg-slate-600"></span>
+                    <span id="connectionBadgeText" class="text-xs text-slate-500 font-mono">Offline</span>
+                </div>
             </div>
 
-            <div class="w-full p-4 bg-slate-800/30 rounded-lg flex items-center justify-between">
-                <span class="text-sm text-slate-400">Base Color</span>
-                <input type="color" id="baseColorPicker" value="#000000">
+            <!-- Beautiful Physical Macropad Visualizer -->
+            <div class="w-full max-w-md bg-slate-950/60 p-8 rounded-3xl border border-slate-800/80 shadow-2xl relative">
+                <!-- Status OLED Display simulation -->
+                <div class="w-full bg-slate-900 border border-slate-800 rounded-lg p-3 mb-8 font-mono text-[10px] text-sky-400 flex flex-col gap-1 shadow-inner h-14 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 bg-sky-950/40 text-[8px] text-sky-500 border-l border-b border-sky-800/30 px-1 font-sans rounded-bl uppercase">OLED Simulation</div>
+                    <div id="oledLine1" class="truncate font-semibold">ESP32 MACROPAD READY</div>
+                    <div id="oledLine2" class="text-slate-500">Click a key cap below to configure it.</div>
+                </div>
+
+                <!-- 2x4 Keypad Grid -->
+                <div class="grid grid-cols-4 gap-6 select-none" id="buttonGrid">
+                    <!-- Keycaps generated via JS -->
+                </div>
+
+                <!-- Rotary Encoder simulation -->
+                <div class="mt-8 flex justify-center border-t border-slate-800/60 pt-6">
+                    <div class="flex items-center gap-4 bg-slate-900/40 px-6 py-3 rounded-2xl border border-slate-800">
+                        <div class="w-10 h-10 rounded-full bg-slate-800 border-2 border-slate-700 shadow-lg flex items-center justify-center cursor-pointer active:scale-95 transition-transform">
+                            <div class="w-2 h-6 bg-slate-600 rounded-full origin-bottom rotate-12"></div>
+                        </div>
+                        <div class="text-left font-mono">
+                            <div class="text-xs text-slate-300 font-bold">Rotary Dial</div>
+                            <div class="text-[9px] text-slate-500">Rotate: Volume | Press: Mute</div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-
-
-            <div id="statusMessage" class="text-sm text-slate-500 font-mono h-6 transition-colors duration-300">Ready to
-                connect...</div>
+            <div id="statusMessage" class="text-xs text-slate-500 font-mono h-6 transition-colors duration-300 text-center">Ready to connect...</div>
         </section>
 
-        <!-- Right Column: Editor -->
-        <section class="glass-panel p-8 rounded-2xl flex flex-col gap-6 relative">
+        <!-- Configuration Editor Section -->
+        <section class="lg:col-span-2 glass-panel p-8 rounded-2xl flex flex-col gap-6 relative min-h-[500px]">
             <div id="editorDisabledOverlay"
-                class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
-                <p class="text-slate-400">Select a button to edit</p>
+                class="absolute inset-0 bg-slate-950/80 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center rounded-2xl transition-all duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-slate-600 mb-2 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                </svg>
+                <p class="text-slate-400 text-sm">Select a keycap button to configure</p>
             </div>
 
-            <header class="flex justify-between items-center border-b border-slate-700/50 pb-4">
-                <h2 class="text-xl font-semibold text-slate-200">Edit Button <span id="editorBtnIndex"
-                        class="text-blue-400">#</span></h2>
+            <header class="flex justify-between items-center border-b border-slate-800 pb-4">
+                <h2 class="text-xl font-semibold text-slate-200">Key Configuration <span id="editorBtnIndex"
+                        class="text-blue-400 font-mono ml-1">#0</span></h2>
             </header>
 
-            <div class="space-y-4">
-                <!-- Type Selection -->
+            <div class="space-y-6 flex-1">
+                <!-- Action Type Selection -->
                 <div class="space-y-2">
-                    <label class="text-xs text-slate-400 uppercase tracking-wider">Button Type</label>
+                    <label class="text-xs text-slate-400 uppercase tracking-wider font-semibold font-mono">Action Mode</label>
                     <div class="grid grid-cols-3 gap-2">
                         <button
-                            class="type-btn px-3 py-2 rounded-md text-sm border border-slate-600 hover:bg-slate-700 transition"
-                            data-type="0">HID</button>
+                            class="type-btn py-2 px-3 rounded-lg text-xs font-semibold border border-slate-700 hover:bg-slate-800 transition"
+                            data-type="0">HID Key</button>
                         <button
-                            class="type-btn px-3 py-2 rounded-md text-sm border border-slate-600 hover:bg-slate-700 transition"
+                            class="type-btn py-2 px-3 rounded-lg text-xs font-semibold border border-slate-700 hover:bg-slate-800 transition"
                             data-type="1">HomeKit</button>
                         <button
-                            class="type-btn px-3 py-2 rounded-md text-sm border border-slate-600 hover:bg-slate-700 transition"
+                            class="type-btn py-2 px-3 rounded-lg text-xs font-semibold border border-slate-700 hover:bg-slate-800 transition"
                             data-type="2">Macro</button>
                     </div>
                 </div>
 
                 <!-- Modifiers (HID Only) -->
                 <div id="modifiersSection" class="space-y-2 hidden">
-                    <label class="text-xs text-slate-400 uppercase tracking-wider">Modifiers</label>
-                    <div class="flex flex-wrap gap-2">
+                    <label class="text-xs text-slate-400 uppercase tracking-wider font-semibold font-mono">Key Modifiers</label>
+                    <div class="grid grid-cols-2 gap-2">
                         <label
-                            class="flex items-center gap-2 bg-slate-900/50 px-3 py-2 rounded-md border border-slate-700 cursor-pointer hover:bg-slate-800 transition">
+                            class="flex items-center gap-2.5 bg-slate-900/60 px-3.5 py-2.5 rounded-lg border border-slate-800 cursor-pointer hover:bg-slate-850 transition">
                             <input type="checkbox" data-mod="1"
-                                class="modifier-cb w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500">
-                            <span class="text-sm text-slate-300">Ctrl</span>
+                                class="modifier-cb w-4 h-4 rounded border-slate-600 bg-slate-850 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900">
+                            <span class="text-xs text-slate-300 font-mono font-medium">Ctrl</span>
                         </label>
                         <label
-                            class="flex items-center gap-2 bg-slate-900/50 px-3 py-2 rounded-md border border-slate-700 cursor-pointer hover:bg-slate-800 transition">
+                            class="flex items-center gap-2.5 bg-slate-900/60 px-3.5 py-2.5 rounded-lg border border-slate-800 cursor-pointer hover:bg-slate-850 transition">
                             <input type="checkbox" data-mod="2"
-                                class="modifier-cb w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500">
-                            <span class="text-sm text-slate-300">Shift</span>
+                                class="modifier-cb w-4 h-4 rounded border-slate-600 bg-slate-850 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900">
+                            <span class="text-xs text-slate-300 font-mono font-medium">Shift</span>
                         </label>
                         <label
-                            class="flex items-center gap-2 bg-slate-900/50 px-3 py-2 rounded-md border border-slate-700 cursor-pointer hover:bg-slate-800 transition">
+                            class="flex items-center gap-2.5 bg-slate-900/60 px-3.5 py-2.5 rounded-lg border border-slate-800 cursor-pointer hover:bg-slate-850 transition">
                             <input type="checkbox" data-mod="4"
-                                class="modifier-cb w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500">
-                            <span class="text-sm text-slate-300">Alt</span>
+                                class="modifier-cb w-4 h-4 rounded border-slate-600 bg-slate-850 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900">
+                            <span class="text-xs text-slate-300 font-mono font-medium">Alt</span>
                         </label>
                         <label
-                            class="flex items-center gap-2 bg-slate-900/50 px-3 py-2 rounded-md border border-slate-700 cursor-pointer hover:bg-slate-800 transition">
+                            class="flex items-center gap-2.5 bg-slate-900/60 px-3.5 py-2.5 rounded-lg border border-slate-800 cursor-pointer hover:bg-slate-850 transition">
                             <input type="checkbox" data-mod="8"
-                                class="modifier-cb w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500">
-                            <span class="text-sm text-slate-300">Gui</span>
+                                class="modifier-cb w-4 h-4 rounded border-slate-600 bg-slate-850 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900">
+                            <span class="text-xs text-slate-300 font-mono font-medium">Gui / Win</span>
                         </label>
                     </div>
                 </div>
 
-                <!-- Value Input -->
-                <div class="space-y-2">
-                    <label class="text-xs text-slate-400 uppercase tracking-wider flex justify-between">
-                        <span>Value / Code</span>
-                        <span class="text-slate-500" id="valueHint">HID Usage Code (e.g. 4 for 'a')</span>
+                <!-- Primary Value Input (HID or HomeKit Index) -->
+                <div id="valueSection" class="space-y-2">
+                    <label class="text-xs text-slate-400 uppercase tracking-wider font-semibold font-mono flex justify-between items-center">
+                        <span id="valueLabel">Value / Code</span>
+                        <span class="text-[10px] text-slate-500 font-sans normal-case" id="valueHint">HID Usage Code (e.g. 4 for 'a')</span>
                     </label>
-                    <input type="number" id="editorValue"
-                        class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none text-slate-200 font-mono">
+                    <div class="flex gap-2">
+                        <input type="number" id="editorValue" min="0" max="65535"
+                            class="flex-1 bg-slate-950/80 border border-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none text-slate-200 font-mono text-sm">
+                        
+                        <button id="recordKeyBtn"
+                            class="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg text-xs font-semibold font-mono transition flex items-center gap-1.5 shadow-sm">
+                            <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                            Record Key
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Color Picker -->
-                <div class="space-y-2">
-                    <label class="text-xs text-slate-400 uppercase tracking-wider">LED Color</label>
-                    <div class="flex items-center gap-4 bg-slate-900/50 p-3 rounded-lg border border-slate-700">
-                        <input type="color" id="editorColor">
-                        <span id="editorColorHex" class="font-mono text-sm text-slate-400">#000000</span>
+                <!-- Live Macro Action Editor -->
+                <div id="macroSection" class="space-y-4 hidden border-t border-slate-800 pt-4">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs text-slate-400 uppercase tracking-wider font-semibold font-mono">Macro Sequence</label>
+                        <input type="text" id="macroName" placeholder="Macro Name"
+                            class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1 text-xs text-slate-200 w-36 focus:outline-none focus:border-blue-500 font-medium">
                     </div>
+
+                    <div class="flex justify-between items-center text-xs text-slate-400">
+                        <span class="font-mono">Memory Offset:</span>
+                        <div class="flex items-center gap-1">
+                            <input type="number" id="macroOffset" min="0" max="1023" step="1"
+                                class="w-16 bg-slate-950 border border-slate-750 rounded px-1.5 py-0.5 text-center text-slate-300 font-mono text-xs focus:outline-none focus:border-blue-500">
+                            <span class="text-[10px] text-slate-500">/ 1024</span>
+                        </div>
+                    </div>
+
+                    <!-- Steps List -->
+                    <div id="macroStepsContainer" class="space-y-2 max-h-48 overflow-y-auto pr-1 bg-slate-950/50 p-2 rounded-lg border border-slate-900/80">
+                        <!-- Steps injected dynamically -->
+                    </div>
+
+                    <!-- Add Step Controls -->
+                    <div class="flex gap-2">
+                        <button id="addPressStepBtn" class="flex-1 py-1.5 px-2 bg-slate-900/60 hover:bg-slate-800 text-slate-300 rounded-lg text-[11px] font-semibold transition border border-slate-800 flex items-center justify-center gap-1">
+                            <span>+ Press Key</span>
+                        </button>
+                        <button id="addReleaseStepBtn" class="flex-1 py-1.5 px-2 bg-slate-900/60 hover:bg-slate-800 text-slate-300 rounded-lg text-[11px] font-semibold transition border border-slate-800 flex items-center justify-center gap-1">
+                            <span>+ Release</span>
+                        </button>
+                        <button id="addDelayStepBtn" class="flex-1 py-1.5 px-2 bg-slate-900/60 hover:bg-slate-800 text-slate-300 rounded-lg text-[11px] font-semibold transition border border-slate-800 flex items-center justify-center gap-1">
+                            <span>+ Delay</span>
+                        </button>
+                    </div>
+
+                    <button id="uploadMacroBtn" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded-lg transition font-semibold flex items-center justify-center gap-1 shadow-lg shadow-indigo-950/40">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        Upload & Link Macro
+                    </button>
                 </div>
             </div>
 
-            <div class="mt-auto pt-6 flex justify-end">
+            <div class="pt-4 border-t border-slate-800 flex justify-end">
                 <button id="saveBtn"
-                    class="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-all shadow-lg shadow-green-900/30 font-semibold">
-                    Save Changes
+                    class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-all shadow-lg shadow-emerald-950/40 font-semibold text-sm">
+                    Apply Config
                 </button>
             </div>
         </section>
     </main>
 
+    <!-- Firmware OTA Upload Modal -->
+    <div id="otaModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-5 relative">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-600/20 text-indigo-400 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-slate-200">WebSerial Firmware Flasher</h3>
+                </div>
+                <button id="closeOtaModalBtn" class="text-slate-500 hover:text-slate-300 text-xl font-bold p-1">&times;</button>
+            </div>
+
+            <p class="text-xs text-slate-400 leading-relaxed">
+                Select a compiled <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-400 font-mono">firmware.bin</code> file to flash directly to the board over WebSerial. No manual bootloader buttons required.
+            </p>
+
+            <div class="space-y-3">
+                <label class="text-xs font-mono text-slate-400 uppercase tracking-wider font-semibold">Select Compiled Binary (.bin)</label>
+                <input type="file" id="firmwareFileInput" accept=".bin"
+                    class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer">
+            </div>
+
+            <!-- Progress Bar -->
+            <div id="otaProgressContainer" class="hidden space-y-2 border-t border-slate-800 pt-3">
+                <div class="flex justify-between text-xs font-mono">
+                    <span id="otaProgressStatus" class="text-indigo-400 font-semibold">Flashing...</span>
+                    <span id="otaPercentLabel" class="text-slate-300">0%</span>
+                </div>
+                <div class="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                    <div id="otaProgressBar" class="bg-gradient-to-r from-indigo-500 to-blue-500 h-full w-0 transition-all duration-150"></div>
+                </div>
+            </div>
+
+            <div class="flex gap-2 pt-2 border-t border-slate-800">
+                <button id="startOtaBtn"
+                    class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-950/40">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Flash Firmware
+                </button>
+                <button id="bootloaderBtn"
+                    class="py-2.5 px-3 bg-amber-950/40 hover:bg-amber-900/40 border border-amber-900/50 text-amber-300 rounded-lg text-xs font-semibold transition"
+                    title="Reboot board into hardware ROM Download Bootloader mode">
+                    ROM Bootloader Mode
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Console Section -->
+    <footer class="w-full max-w-5xl mt-8 glass-panel rounded-2xl p-5 flex flex-col gap-3">
+        <div class="flex justify-between items-center">
+            <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold font-mono flex items-center gap-2">
+                <span id="consolePulse" class="w-2 h-2 rounded-full bg-slate-500"></span>
+                Serial Console Terminal
+            </span>
+            <button id="clearConsoleBtn" class="text-xs text-slate-500 hover:text-slate-300 font-mono transition">Clear Console</button>
+        </div>
+        <div id="consoleLog" class="h-32 overflow-y-auto bg-slate-950/70 rounded-xl p-4 font-mono text-xs text-slate-400 space-y-1.5 select-text border border-slate-900">
+            <div class="text-slate-500">Ready to display Serial CDC log. Click "Connect Device" to establish connection...</div>
+        </div>
+    </footer>
+
+    <!-- JS Logic -->
     <script>
-        // --- State ---
+        // --- Key Mapping Database ---
+        const HID_KEYS = {
+            4: "A", 5: "B", 6: "C", 7: "D", 8: "E", 9: "F", 10: "G", 11: "H", 12: "I", 13: "J", 14: "K", 15: "L", 16: "M", 17: "N", 18: "O", 19: "P", 20: "Q", 21: "R", 22: "S", 23: "T", 24: "U", 25: "V", 26: "W", 27: "X", 28: "Y", 29: "Z",
+            30: "1", 31: "2", 32: "3", 33: "4", 34: "5", 35: "6", 36: "7", 37: "8", 38: "9", 39: "0",
+            40: "Enter", 41: "Escape", 42: "Backspace", 43: "Tab", 44: "Space",
+            45: "-", 46: "=", 47: "[", 48: "]", 49: "\\",
+            51: ";", 52: "'", 53: "`", 54: ",", 55: ".", 56: "/",
+            57: "CapsLock",
+            58: "F1", 59: "F2", 60: "F3", 61: "F4", 62: "F5", 63: "F6", 64: "F7", 65: "F8", 66: "F9", 67: "F10", 68: "F11", 69: "F12",
+            70: "PrintScreen", 71: "ScrollLock", 72: "Pause", 73: "Insert", 74: "Home", 75: "PageUp", 76: "Delete", 77: "End", 78: "PageDown",
+            79: "RightArrow", 80: "LeftArrow", 81: "DownArrow", 82: "UpArrow",
+            83: "NumLock", 88: "KP Enter",
+            224: "LCtrl", 225: "LShift", 226: "LAlt", 227: "LWin",
+            228: "RCtrl", 229: "RShift", 230: "RAlt", 231: "RWin"
+        };
+
+        const codeToHid = {
+            "KeyA": 4, "KeyB": 5, "KeyC": 6, "KeyD": 7, "KeyE": 8, "KeyF": 9, "KeyG": 10,
+            "KeyH": 11, "KeyI": 12, "KeyJ": 13, "KeyK": 14, "KeyL": 15, "KeyM": 16, "KeyN": 17,
+            "KeyO": 18, "KeyP": 19, "KeyQ": 20, "KeyR": 21, "KeyS": 22, "KeyT": 23, "KeyU": 24,
+            "KeyV": 25, "KeyW": 26, "KeyX": 27, "KeyY": 28, "KeyZ": 29,
+            "Digit1": 30, "Digit2": 31, "Digit3": 32, "Digit4": 33, "Digit5": 34, "Digit6": 35,
+            "Digit7": 36, "Digit8": 37, "Digit9": 38, "Digit0": 39,
+            "Enter": 40, "NumpadEnter": 88,
+            "Escape": 41, "Backspace": 42, "Tab": 43, "Space": 44,
+            "Minus": 45, "Equal": 46, "BracketLeft": 47, "BracketRight": 48, "Backslash": 49,
+            "Semicolon": 51, "Quote": 52, "Backquote": 53, "Comma": 54, "Period": 55, "Slash": 56,
+            "CapsLock": 57,
+            "F1": 58, "F2": 59, "F3": 60, "F4": 61, "F5": 62, "F6": 63, "F7": 64, "F8": 65,
+            "F9": 66, "F10": 67, "F11": 68, "F12": 69,
+            "PrintScreen": 70, "ScrollLock": 71, "Pause": 72, "Insert": 73, "Home": 74,
+            "PageUp": 75, "Delete": 76, "End": 77, "PageDown": 78,
+            "ArrowRight": 79, "ArrowLeft": 80, "ArrowDown": 81, "ArrowUp": 82,
+            "NumLock": 83, "NumpadDivide": 84, "NumpadMultiply": 85, "NumpadSubtract": 86, "NumpadAdd": 87,
+            "Numpad1": 89, "Numpad2": 90, "Numpad3": 91, "Numpad4": 92, "Numpad5": 93,
+            "Numpad6": 94, "Numpad7": 95, "Numpad8": 96, "Numpad9": 97, "Numpad0": 98, "NumpadDecimal": 99,
+            "ControlLeft": 224, "ShiftLeft": 225, "AltLeft": 226, "MetaLeft": 227,
+            "ControlRight": 228, "ShiftRight": 229, "AltRight": 230, "MetaRight": 231
+        };
+
+        // --- Connection & Global State ---
         let port;
         let reader;
         let writer;
         let keepReading = false;
         let config = {
-            baseColor: [0, 0, 0],
-            buttons: Array(8).fill().map((_, i) => ({ type: 0, value: 0, modifiers: 0, color: [0, 0, 0] }))
+            buttons: Array(8).fill().map((_, i) => ({ type: 0, value: 0, modifiers: 0 }))
         };
         let selectedBtnIndex = -1;
+        let recordingKey = false;
+        let isOtaUploading = false;
+        let otaFileBytes = null;
 
-        // --- UI Refs ---
+        // Current temporary macro state in memory
+        let activeMacro = {
+            name: "My Macro",
+            offset: 0,
+            steps: []
+        };
+
+        // --- UI Selectors ---
         const connectBtn = document.getElementById('connectBtn');
         const refreshBtn = document.getElementById('refreshBtn');
         const statusMsg = document.getElementById('statusMessage');
         const buttonGrid = document.getElementById('buttonGrid');
-        const baseColorPicker = document.getElementById('baseColorPicker');
+        const resetBtn = document.getElementById('resetBtn');
 
-        // Editor Refs
+        // Connection status elements
+        const connBadge = document.getElementById('connectionBadge');
+        const connBadgeText = document.getElementById('connectionBadgeText');
+        const consolePulse = document.getElementById('consolePulse');
+
+        // OLED Display simulation
+        const oledLine1 = document.getElementById('oledLine1');
+        const oledLine2 = document.getElementById('oledLine2');
+
+        // Editor Panels
         const editorOverlay = document.getElementById('editorDisabledOverlay');
         const editorIndexLabel = document.getElementById('editorBtnIndex');
         const typeBtns = document.querySelectorAll('.type-btn');
         const modifiersSection = document.getElementById('modifiersSection');
+        const valueSection = document.getElementById('valueSection');
+        const valueLabel = document.getElementById('valueLabel');
+        const valueHint = document.getElementById('valueHint');
         const modifierCbs = document.querySelectorAll('.modifier-cb');
         const editorValue = document.getElementById('editorValue');
-        const editorColor = document.getElementById('editorColor');
-        const editorColorHex = document.getElementById('editorColorHex');
         const saveBtn = document.getElementById('saveBtn');
+        const recordKeyBtn = document.getElementById('recordKeyBtn');
+
+        // Macro elements
+        const macroSection = document.getElementById('macroSection');
+        const macroNameInput = document.getElementById('macroName');
+        const macroOffsetInput = document.getElementById('macroOffset');
+        const macroStepsContainer = document.getElementById('macroStepsContainer');
+        const addPressStepBtn = document.getElementById('addPressStepBtn');
+        const addReleaseStepBtn = document.getElementById('addReleaseStepBtn');
+        const addDelayStepBtn = document.getElementById('addDelayStepBtn');
+        const uploadMacroBtn = document.getElementById('uploadMacroBtn');
+
+        // OTA Modal elements
+        const otaModalBtn = document.getElementById('otaModalBtn');
+        const otaModal = document.getElementById('otaModal');
+        const closeOtaModalBtn = document.getElementById('closeOtaModalBtn');
+        const firmwareFileInput = document.getElementById('firmwareFileInput');
+        const startOtaBtn = document.getElementById('startOtaBtn');
+        const bootloaderBtn = document.getElementById('bootloaderBtn');
+        const otaProgressContainer = document.getElementById('otaProgressContainer');
+        const otaProgressBar = document.getElementById('otaProgressBar');
+        const otaProgressStatus = document.getElementById('otaProgressStatus');
+        const otaPercentLabel = document.getElementById('otaPercentLabel');
+
+        // WiFi
         const wifiBtn = document.getElementById('wifiBtn');
         const wifiDropdown = document.getElementById('wifiDropdown');
+        const saveWifiBtn = document.getElementById('saveWifiBtn');
 
-        // --- Initialization ---
+        // Console Log
+        const consoleLog = document.getElementById('consoleLog');
+        const clearConsoleBtn = document.getElementById('clearConsoleBtn');
+
+        // --- Initial Grid Render ---
         renderGrid();
+
+        // --- Console Log Helper ---
+        function appendToLog(text, direction = 'info') {
+            const time = new Date().toLocaleTimeString(undefined, { hour12: false });
+            let textClass = 'text-slate-400';
+            let prefix = '[LOG] ';
+
+            if (direction === 'tx') {
+                textClass = 'text-sky-400 font-semibold';
+                prefix = '[TX] ';
+            } else if (direction === 'rx') {
+                textClass = 'text-emerald-400';
+                prefix = '[RX] ';
+            } else if (direction === 'err') {
+                textClass = 'text-rose-400 font-bold';
+                prefix = '[ERR] ';
+            } else if (direction === 'ok') {
+                textClass = 'text-green-400 font-semibold';
+                prefix = '[OK] ';
+            }
+
+            const div = document.createElement('div');
+            div.className = `${textClass} font-mono tracking-tight`;
+            div.textContent = `${time} ${prefix}${text}`;
+            consoleLog.appendChild(div);
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+        clearConsoleBtn.addEventListener('click', () => {
+            consoleLog.innerHTML = `<div class="text-slate-500">Log cleared. Ready...</div>`;
+        });
 
         // --- Event Listeners ---
         wifiBtn.addEventListener('click', (e) => {
             if (wifiBtn.disabled) return;
             wifiDropdown.classList.toggle('hidden');
+            e.stopPropagation();
         });
 
-        // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
-            if (!wifiBtn.contains(e.target)) {
+            if (!wifiBtn.contains(e.target) && !wifiDropdown.contains(e.target)) {
                 wifiDropdown.classList.add('hidden');
             }
         });
 
+        // --- OTA Modal Event Handlers ---
+        otaModalBtn.addEventListener('click', () => {
+            if (otaModalBtn.disabled) return;
+            otaModal.classList.remove('hidden');
+        });
+
+        closeOtaModalBtn.addEventListener('click', () => {
+            if (isOtaUploading) {
+                if (!confirm("OTA update is currently in progress. Closing this modal may interrupt flashing. Close anyway?")) {
+                    return;
+                }
+            }
+            otaModal.classList.add('hidden');
+        });
+
+        bootloaderBtn.addEventListener('click', () => {
+            if (confirm("Reboot ESP32 into hardware ROM Bootloader mode? (The device will disconnect and enter USB Download Mode)")) {
+                writeToSerial("REBOOT_BOOTLOADER\n");
+                otaModal.classList.add('hidden');
+            }
+        });
+
+        // --- Firmware OTA Flasher Action ---
+        startOtaBtn.addEventListener('click', async () => {
+            const file = firmwareFileInput.files[0];
+            if (!file) {
+                alert("Please select a compiled firmware binary (.bin) file first!");
+                return;
+            }
+
+            try {
+                otaFileBytes = new Uint8Array(await file.arrayBuffer());
+                appendToLog(`Firmware binary loaded: ${file.name} (${otaFileBytes.length} bytes)`, 'info');
+                
+                otaProgressContainer.classList.remove('hidden');
+                updateOtaProgress(0, "Initiating OTA handshake...");
+                startOtaBtn.disabled = true;
+
+                isOtaUploading = true;
+                await writeToSerial(`START_OTA ${otaFileBytes.length}\n`);
+
+            } catch (err) {
+                alert("Failed to read firmware file: " + err.message);
+                appendToLog("Firmware read error: " + err.message, 'err');
+            }
+        });
+
+        function updateOtaProgress(percent, statusText) {
+            otaProgressBar.style.width = `${percent}%`;
+            otaPercentLabel.textContent = `${percent}%`;
+            if (statusText) otaProgressStatus.textContent = statusText;
+        }
+
+        async function streamOtaBinaryData() {
+            appendToLog(`Beginning WebSerial binary streaming of ${otaFileBytes.length} bytes...`, 'info');
+            const chunkSize = 512;
+            let offset = 0;
+
+            try {
+                while (offset < otaFileBytes.length && isOtaUploading) {
+                    const chunk = otaFileBytes.subarray(offset, offset + chunkSize);
+                    
+                    writer = port.writable.getWriter();
+                    await writer.write(chunk);
+                    writer.releaseLock();
+
+                    offset += chunk.length;
+                    const percent = Math.floor((offset / otaFileBytes.length) * 100);
+                    updateOtaProgress(percent, `Flashing... ${offset} / ${otaFileBytes.length} B`);
+
+                    // Short pause to allow serial throughput
+                    await new Promise(res => setTimeout(res, 8));
+                }
+
+                if (isOtaUploading) {
+                    updateOtaProgress(100, "Finalizing flash & verifying checksum...");
+                }
+            } catch (err) {
+                appendToLog("OTA binary stream error: " + err.message, 'err');
+                updateOtaProgress(0, "Upload error!");
+                isOtaUploading = false;
+                startOtaBtn.disabled = false;
+            }
+        }
+
+        // --- Web Serial Connection ---
         connectBtn.addEventListener('click', async () => {
             if (port) {
-                // Disconnect logic if needed, usually just reload page for simple Web Serial apps
                 window.location.reload();
                 return;
             }
             try {
+                appendToLog("Requesting Web Serial port selection...", "info");
                 port = await navigator.serial.requestPort();
                 await port.open({ baudRate: 115200 });
 
@@ -298,20 +694,34 @@
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     Disconnect
                 `;
-                connectBtn.classList.replace('bg-blue-600', 'bg-red-600');
-                connectBtn.classList.replace('hover:bg-blue-500', 'hover:bg-red-500');
+                connectBtn.classList.replace('bg-blue-600', 'bg-rose-700');
+                connectBtn.classList.replace('hover:bg-blue-500', 'hover:bg-rose-600');
                 refreshBtn.classList.remove('hidden');
                 wifiBtn.disabled = false;
+                resetBtn.disabled = false;
+                otaModalBtn.disabled = false;
 
-                setStatus('Connected', 'green');
+                connBadge.classList.replace('bg-slate-600', 'bg-emerald-500');
+                connBadge.classList.add('animate-pulse');
+                connBadgeText.textContent = "Connected";
+                connBadgeText.classList.replace('text-slate-500', 'text-emerald-400');
+                consolePulse.classList.replace('bg-slate-500', 'bg-emerald-500');
+                consolePulse.classList.add('animate-pulse');
+
+                setStatus('Connected to ESP32 Macropad', 'green');
+                appendToLog("Serial Port connection open (115200 baud).", "info");
+
+                oledLine1.textContent = "CONNECTED TO HOST";
+                oledLine2.textContent = "Synchronizing configuration parameters...";
 
                 keepReading = true;
                 readLoop();
-                writeToSerial("GET_CONFIG\n"); // Initial fetch
+                writeToSerial("GET_CONFIG\n"); // Auto fetch config
 
             } catch (err) {
                 console.error(err);
                 setStatus('Connection failed: ' + err.message, 'red');
+                appendToLog("Connection failed: " + err.message, "err");
             }
         });
 
@@ -319,88 +729,134 @@
             writeToSerial("GET_CONFIG\n");
         });
 
-        // Editor: Type Selection
+        // --- Reset Device Configuration ---
+        resetBtn.addEventListener('click', () => {
+            if (confirm("Reset Macropad configuration back to system defaults? All customized key mappings and modifiers will be wiped.")) {
+                writeToSerial("RESET\n");
+                setTimeout(() => writeToSerial("GET_CONFIG\n"), 250);
+            }
+        });
+
+        // --- Key Recorder Mode ---
+        recordKeyBtn.addEventListener('click', () => {
+            if (selectedBtnIndex === -1) return;
+            recordingKey = true;
+            recordKeyBtn.innerHTML = `
+                <span class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-ping"></span>
+                Listening...
+            `;
+            recordKeyBtn.classList.replace('bg-slate-800', 'bg-slate-900');
+            oledLine1.textContent = "KEY RECORDER ACTIVE";
+            oledLine2.textContent = "Press any key on physical keyboard...";
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (!recordingKey) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            const keyStr = e.code;
+            const hidCode = codeToHid[keyStr];
+
+            if (hidCode !== undefined) {
+                let mask = 0;
+                if (e.ctrlKey) mask |= 1;
+                if (e.shiftKey) mask |= 2;
+                if (e.altKey) mask |= 4;
+                if (e.metaKey) mask |= 8;
+
+                config.buttons[selectedBtnIndex].value = hidCode;
+                config.buttons[selectedBtnIndex].modifiers = mask;
+
+                editorValue.value = hidCode;
+                modifierCbs.forEach(cb => {
+                    const bit = parseInt(cb.dataset.mod);
+                    cb.checked = (mask & bit) !== 0;
+                });
+
+                appendToLog(`Captured physical key: ${keyStr} -> HID Code ${hidCode} (Mods: ${mask})`);
+                
+                recordingKey = false;
+                recordKeyBtn.innerHTML = `
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                    Record Key
+                `;
+                recordKeyBtn.classList.replace('bg-slate-900', 'bg-slate-800');
+                
+                oledLine1.textContent = `CAPTURED: ${keyStr}`;
+                oledLine2.textContent = `HID usage code ${hidCode} bound. Apply changes to save.`;
+
+                updateValueHint();
+                renderGrid();
+            }
+        });
+
+        // --- Editor: Type Selection Badges ---
         typeBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 if (selectedBtnIndex === -1) return;
 
-                // Update UI state
                 typeBtns.forEach(b => {
                     b.classList.remove('bg-blue-600', 'text-white', 'border-blue-500');
-                    b.classList.add('border-slate-600');
+                    b.classList.add('border-slate-700');
                 });
                 btn.classList.add('bg-blue-600', 'text-white', 'border-blue-500');
-                btn.classList.remove('border-slate-600');
+                btn.classList.remove('border-slate-700');
 
                 const newType = parseInt(btn.dataset.type);
                 config.buttons[selectedBtnIndex].type = newType;
 
+                if (newType === 2) {
+                    if (config.buttons[selectedBtnIndex].value === 0 || config.buttons[selectedBtnIndex].type !== 2) {
+                        config.buttons[selectedBtnIndex].value = selectedBtnIndex * 64;
+                    }
+                }
+
                 updateEditorVisibility(newType);
                 updateValueHint();
+                renderGrid();
             });
         });
 
-        // Editor: Modifiers
+        // --- Editor: Modifiers Checkboxes ---
         modifierCbs.forEach(cb => {
             cb.addEventListener('change', () => {
                 if (selectedBtnIndex === -1) return;
 
-                // Re-calculate bitmask
                 let mask = 0;
                 modifierCbs.forEach(c => {
                     if (c.checked) mask |= parseInt(c.dataset.mod);
                 });
                 config.buttons[selectedBtnIndex].modifiers = mask;
+                renderGrid();
             });
         });
 
-        // Editor: Value
-        editorValue.addEventListener('change', (e) => {
+        // --- Editor: Raw Value Changes ---
+        editorValue.addEventListener('input', (e) => {
             if (selectedBtnIndex === -1) return;
-            config.buttons[selectedBtnIndex].value = parseInt(e.target.value);
-        });
-
-        // Editor: Color
-        editorColor.addEventListener('input', (e) => {
-            if (selectedBtnIndex === -1) return;
-            const rgb = hexToRgb(e.target.value);
-            config.buttons[selectedBtnIndex].color = [rgb.r, rgb.g, rgb.b];
-            editorColorHex.textContent = e.target.value.toUpperCase();
-
-            // Live update the grid preview
+            config.buttons[selectedBtnIndex].value = parseInt(e.target.value) || 0;
             renderGrid();
         });
 
-        // Base Color
-        baseColorPicker.addEventListener('change', async (e) => {
-            const rgb = hexToRgb(e.target.value);
-            config.baseColor = [rgb.r, rgb.g, rgb.b];
-
-            const cmd = `SET_BASE R ${rgb.r} G ${rgb.g} B ${rgb.b}\n`;
-            setStatus('Saving Base Color...', 'blue');
-            await writeToSerial(cmd);
-            setStatus('Saved Base Color', 'green');
-        });
-
-        // Save Button
+        // --- Save / Apply Key Configuration ---
         saveBtn.addEventListener('click', async () => {
             if (selectedBtnIndex === -1) return;
 
             const btn = config.buttons[selectedBtnIndex];
-            // CMD: SET_BTN <idx> TYPE <type> VAL <val> MOD <mod> R <r> G <g> B <b>
-            // Include MOD even if 0, firmware handles it
-            const cmd = `SET_BTN ${selectedBtnIndex} TYPE ${btn.type} VAL ${btn.value} MOD ${btn.modifiers || 0} R ${btn.color[0]} G ${btn.color[1]} B ${btn.color[2]}\n`;
+            const cmd = `SET_BTN ${selectedBtnIndex} TYPE ${btn.type} VAL ${btn.value} MOD ${btn.modifiers || 0}\n`;
 
-            setStatus(`Saving Button ${selectedBtnIndex}...`, 'blue');
+            setStatus(`Applying configuration to button #${selectedBtnIndex}...`, 'blue');
             await writeToSerial(cmd);
-            setStatus('Saved!', 'green');
+            
+            oledLine1.textContent = `CONFIG APPLIED`;
+            oledLine2.textContent = `Key #${selectedBtnIndex} successfully saved onto flash.`;
 
-            // Re-fetch to confirm
-            setTimeout(() => writeToSerial("GET_CONFIG\n"), 200);
+            setTimeout(() => writeToSerial("GET_CONFIG\n"), 250);
         });
 
-        // WiFi Save
-        document.getElementById('saveWifiBtn').addEventListener('click', async () => {
+        // --- Save WiFi Credentials ---
+        saveWifiBtn.addEventListener('click', async () => {
             const ssid = document.getElementById('wifiSsid').value;
             const pass = document.getElementById('wifiPass').value;
 
@@ -414,34 +870,73 @@
 
             const cmd = `SET_WIFI ${hexSsid} ${hexPass}\n`;
             setStatus('Sending WiFi Credentials...', 'blue');
+            appendToLog(`Encrypting WiFi: SSID length ${ssid.length}, password length ${pass.length}`, 'info');
             await writeToSerial(cmd);
+            wifiDropdown.classList.add('hidden');
         });
 
-        // --- Core Functions ---
-
+        // --- Grid Renderer & UI Updaters ---
         function renderGrid() {
             buttonGrid.innerHTML = '';
             config.buttons.forEach((btn, idx) => {
-                const div = document.createElement('div');
-                div.className = `w-full aspect-square rounded-lg cursor-pointer transition-all border border-slate-700 relative group`;
-
-                // Color preview
-                const brightness = (btn.color[0] + btn.color[1] + btn.color[2]) / 3;
-                div.style.backgroundColor = `rgb(${btn.color[0]}, ${btn.color[1]}, ${btn.color[2]})`;
-                div.style.boxShadow = `0 0 ${brightness > 50 ? 15 : 5}px rgb(${btn.color[0]}, ${btn.color[1]}, ${btn.color[2]})`;
+                const keyContainer = document.createElement('div');
+                keyContainer.className = `aspect-square w-full rounded-2xl cursor-pointer border border-slate-800 keycap flex flex-col justify-between p-3 relative group`;
 
                 if (idx === selectedBtnIndex) {
-                    div.classList.add('ring-2', 'ring-white', 'scale-105', 'z-10');
+                    keyContainer.classList.add('selected');
                 }
 
-                div.addEventListener('click', () => selectButton(idx));
-                buttonGrid.appendChild(div);
-            });
+                const topRow = document.createElement('div');
+                topRow.className = "flex justify-between items-center w-full";
+                
+                const idxLabel = document.createElement('span');
+                idxLabel.className = "text-[9px] font-mono text-slate-500 font-bold uppercase";
+                idxLabel.textContent = `K${idx + 1}`;
+                topRow.appendChild(idxLabel);
 
-            // Initial selection if none
-            if (selectedBtnIndex === -1 && config.buttons.length > 0) {
-                // selectButton(0); // Optional: Auto select first
-            }
+                const modeLabel = document.createElement('span');
+                modeLabel.className = "text-[8px] px-1 py-0.5 rounded font-bold uppercase tracking-wide ";
+                if (btn.type === 0) {
+                    modeLabel.textContent = "HID";
+                    modeLabel.className += "bg-blue-950 text-blue-400 border border-blue-900/50";
+                } else if (btn.type === 1) {
+                    modeLabel.textContent = "HK";
+                    modeLabel.className += "bg-amber-950 text-amber-400 border border-amber-900/50";
+                } else if (btn.type === 2) {
+                    modeLabel.textContent = "MAC";
+                    modeLabel.className += "bg-purple-950 text-purple-400 border border-purple-900/50";
+                }
+                topRow.appendChild(modeLabel);
+                keyContainer.appendChild(topRow);
+
+                const valueLabel = document.createElement('div');
+                valueLabel.className = "text-center w-full truncate font-bold text-xs leading-none mb-1 text-slate-200";
+                
+                if (btn.type === 0) {
+                    let mods = [];
+                    if (btn.modifiers & 1) mods.push("Ctrl");
+                    if (btn.modifiers & 2) mods.push("Shift");
+                    if (btn.modifiers & 4) mods.push("Alt");
+                    if (btn.modifiers & 8) mods.push("Win");
+
+                    const keyName = HID_KEYS[btn.value] || `Key #${btn.value}`;
+                    if (mods.length > 0) {
+                        valueLabel.innerHTML = `<span class="text-[9px] text-slate-500 block truncate font-mono font-medium">${mods.join('+')}</span>${keyName}`;
+                    } else {
+                        valueLabel.textContent = keyName;
+                    }
+                } else if (btn.type === 1) {
+                    valueLabel.textContent = `HK Event #${btn.value}`;
+                } else if (btn.type === 2) {
+                    const savedMacros = JSON.parse(localStorage.getItem('macropad_macros') || '{}');
+                    const macro = savedMacros[`offset_${btn.value}`];
+                    valueLabel.innerHTML = `<span class="text-[9px] text-slate-500 block truncate font-mono font-medium">Offset @${btn.value}</span>${macro ? macro.name : 'Run Macro'}`;
+                }
+
+                keyContainer.appendChild(valueLabel);
+                keyContainer.addEventListener('click', () => selectButton(idx));
+                buttonGrid.appendChild(keyContainer);
+            });
         }
 
         function selectButton(index) {
@@ -449,56 +944,311 @@
             const btn = config.buttons[index];
             renderGrid();
 
-            editorOverlay.classList.add('hidden');
-            editorIndexLabel.textContent = index;
+            editorOverlay.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => editorOverlay.classList.add('hidden'), 200);
+
+            editorIndexLabel.textContent = `#${index}`;
             editorValue.value = btn.value;
 
-            // Update color picker
-            const hex = rgbToHex(btn.color[0], btn.color[1], btn.color[2]);
-            editorColor.value = hex;
-            editorColorHex.textContent = hex.toUpperCase();
-
-            // Type buttons
             typeBtns.forEach(b => {
                 b.classList.remove('bg-blue-600', 'text-white', 'border-blue-500');
-                b.classList.add('border-slate-600');
+                b.classList.add('border-slate-700');
                 if (parseInt(b.dataset.type) === btn.type) {
                     b.classList.add('bg-blue-600', 'text-white', 'border-blue-500');
-                    b.classList.remove('border-slate-600');
+                    b.classList.remove('border-slate-700');
                 }
             });
 
-            // Modifiers UI
             const mods = btn.modifiers || 0;
             modifierCbs.forEach(cb => {
                 const bit = parseInt(cb.dataset.mod);
                 cb.checked = (mods & bit) !== 0;
             });
 
+            oledLine1.textContent = `KEY #${index} SELECTED`;
+            if (btn.type === 0) {
+                oledLine2.textContent = `Mode: USB HID Keyboard (Keycode: ${btn.value})`;
+            } else if (btn.type === 1) {
+                oledLine2.textContent = `Mode: Apple HomeKit (Trigger: ${btn.value})`;
+            } else if (btn.type === 2) {
+                oledLine2.textContent = `Mode: Custom Macro bytecode (Offset: ${btn.value})`;
+            }
+
             updateEditorVisibility(btn.type);
             updateValueHint();
+
+            if (btn.type === 2) {
+                loadMacroFromStorage(btn.value);
+            }
         }
 
         function updateEditorVisibility(type) {
-            if (type === 0) { // HID
+            if (type === 0) {
                 modifiersSection.classList.remove('hidden');
-            } else {
+                valueSection.classList.remove('hidden');
+                macroSection.classList.add('hidden');
+            } else if (type === 1) {
                 modifiersSection.classList.add('hidden');
+                valueSection.classList.remove('hidden');
+                macroSection.classList.add('hidden');
+            } else if (type === 2) {
+                modifiersSection.classList.add('hidden');
+                valueSection.classList.add('hidden');
+                macroSection.classList.remove('hidden');
             }
         }
 
         function updateValueHint() {
             if (selectedBtnIndex === -1) return;
             const type = config.buttons[selectedBtnIndex].type;
-            const label = document.getElementById('valueHint');
-            if (type === 0) label.textContent = "HID Usage Code (e.g. 4=A, 40=Enter)";
-            else if (type === 1) label.textContent = "HomeKit Trigger Index (0-255)";
-            else if (type === 2) label.textContent = "Macro ID (Custom Logic)";
+            
+            if (type === 0) {
+                valueLabel.textContent = "HID Usage Code";
+                valueHint.textContent = "Keycode integer (e.g. 4=A, 40=Enter)";
+                recordKeyBtn.classList.remove('hidden');
+            } else if (type === 1) {
+                valueLabel.textContent = "HomeKit Trigger ID";
+                valueHint.textContent = "Index trigger code (e.g. 0-255)";
+                recordKeyBtn.classList.add('hidden');
+            }
         }
 
-        // --- Serial Comm ---
+        // --- Macro Editor Core Functions ---
+        function loadMacroFromStorage(offset) {
+            const savedMacros = JSON.parse(localStorage.getItem('macropad_macros') || '{}');
+            const macro = savedMacros[`offset_${offset}`];
 
+            activeMacro.offset = offset;
+            macroOffsetInput.value = offset;
+
+            if (macro) {
+                activeMacro.name = macro.name || `Macro @${offset}`;
+                activeMacro.steps = macro.steps || [];
+            } else {
+                activeMacro.name = `Macro @${offset}`;
+                activeMacro.steps = [
+                    { type: 'press', key: 4, modifiers: 0 },
+                    { type: 'release' }
+                ];
+            }
+
+            macroNameInput.value = activeMacro.name;
+            renderMacroSteps();
+        }
+
+        macroNameInput.addEventListener('input', (e) => {
+            activeMacro.name = e.target.value;
+        });
+
+        macroOffsetInput.addEventListener('change', (e) => {
+            const newOffset = Math.min(1023, Math.max(0, parseInt(e.target.value) || 0));
+            activeMacro.offset = newOffset;
+            
+            if (selectedBtnIndex !== -1) {
+                config.buttons[selectedBtnIndex].value = newOffset;
+                renderGrid();
+            }
+        });
+
+        function renderMacroSteps() {
+            macroStepsContainer.innerHTML = '';
+            
+            if (activeMacro.steps.length === 0) {
+                macroStepsContainer.innerHTML = `<div class="text-[10px] text-slate-500 italic text-center py-4">No steps added. Click actions below to build sequence.</div>`;
+                return;
+            }
+
+            activeMacro.steps.forEach((step, idx) => {
+                const stepRow = document.createElement('div');
+                stepRow.className = "flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-lg p-2 relative";
+
+                const badge = document.createElement('span');
+                badge.className = "text-[9px] font-bold font-mono py-0.5 px-1 rounded uppercase tracking-wider ";
+                
+                const controlDiv = document.createElement('div');
+                controlDiv.className = "flex-1 flex items-center gap-1.5 text-xs font-mono";
+
+                if (step.type === 'press') {
+                    badge.textContent = "PRESS";
+                    badge.className += "bg-blue-950 text-blue-400 border border-blue-900/40";
+
+                    const modsLabel = document.createElement('span');
+                    modsLabel.className = "text-[9px] text-slate-500";
+                    modsLabel.textContent = "Mods:";
+                    
+                    const selectMod = document.createElement('select');
+                    selectMod.className = "bg-slate-950 border border-slate-700 text-slate-300 text-[10px] rounded px-1 py-0.5 max-w-[70px]";
+                    const modOptions = [
+                        { val: 0, text: "None" },
+                        { val: 1, text: "Ctrl" },
+                        { val: 2, text: "Shift" },
+                        { val: 3, text: "Ctrl+Shft" },
+                        { val: 4, text: "Alt" },
+                        { val: 5, text: "Ctrl+Alt" },
+                        { val: 8, text: "Win" },
+                        { val: 9, text: "Ctrl+Win" }
+                    ];
+                    modOptions.forEach(opt => {
+                        const o = document.createElement('option');
+                        o.value = opt.val;
+                        o.textContent = opt.text;
+                        if (step.modifiers === opt.val) o.selected = true;
+                        selectMod.appendChild(o);
+                    });
+                    selectMod.addEventListener('change', (e) => {
+                        step.modifiers = parseInt(e.target.value);
+                    });
+
+                    const selectKey = document.createElement('select');
+                    selectKey.className = "bg-slate-950 border border-slate-700 text-slate-300 text-[10px] rounded px-1 py-0.5 max-w-[90px] font-mono";
+                    Object.keys(HID_KEYS).forEach(k => {
+                        const o = document.createElement('option');
+                        o.value = k;
+                        o.textContent = HID_KEYS[k];
+                        if (parseInt(step.key) === parseInt(k)) o.selected = true;
+                        selectKey.appendChild(o);
+                    });
+                    selectKey.addEventListener('change', (e) => {
+                        step.key = parseInt(e.target.value);
+                    });
+
+                    controlDiv.appendChild(modsLabel);
+                    controlDiv.appendChild(selectMod);
+                    controlDiv.appendChild(selectKey);
+
+                } else if (step.type === 'release') {
+                    badge.textContent = "RELEASE";
+                    badge.className += "bg-emerald-950 text-emerald-400 border border-emerald-900/40";
+                    
+                    const releaseInfo = document.createElement('span');
+                    releaseInfo.className = "text-[10px] text-slate-500 italic";
+                    releaseInfo.textContent = "Releases all keys";
+                    controlDiv.appendChild(releaseInfo);
+
+                } else if (step.type === 'delay') {
+                    badge.textContent = "DELAY";
+                    badge.className += "bg-amber-950 text-amber-400 border border-amber-900/40";
+
+                    const durInput = document.createElement('input');
+                    durInput.type = "number";
+                    durInput.value = step.duration || 100;
+                    durInput.min = "1";
+                    durInput.max = "65535";
+                    durInput.className = "w-16 bg-slate-950 border border-slate-700 rounded px-1 py-0.5 text-center text-[10px] text-slate-300 font-mono focus:outline-none focus:border-blue-500";
+                    durInput.addEventListener('input', (e) => {
+                        step.duration = parseInt(e.target.value) || 0;
+                    });
+
+                    const msLabel = document.createElement('span');
+                    msLabel.className = "text-[10px] text-slate-500 font-mono";
+                    msLabel.textContent = "ms";
+
+                    controlDiv.appendChild(durInput);
+                    controlDiv.appendChild(msLabel);
+                }
+
+                stepRow.appendChild(badge);
+                stepRow.appendChild(controlDiv);
+
+                const delBtn = document.createElement('button');
+                delBtn.className = "text-slate-500 hover:text-rose-400 transition ml-auto p-1";
+                delBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                `;
+                delBtn.addEventListener('click', () => {
+                    activeMacro.steps.splice(idx, 1);
+                    renderMacroSteps();
+                });
+                stepRow.appendChild(delBtn);
+
+                macroStepsContainer.appendChild(stepRow);
+            });
+        }
+
+        addPressStepBtn.addEventListener('click', () => {
+            activeMacro.steps.push({ type: 'press', key: 4, modifiers: 0 });
+            renderMacroSteps();
+        });
+
+        addReleaseStepBtn.addEventListener('click', () => {
+            activeMacro.steps.push({ type: 'release' });
+            renderMacroSteps();
+        });
+
+        addDelayStepBtn.addEventListener('click', () => {
+            activeMacro.steps.push({ type: 'delay', duration: 100 });
+            renderMacroSteps();
+        });
+
+        // --- Macro Compiler and Uploader ---
+        uploadMacroBtn.addEventListener('click', async () => {
+            if (activeMacro.steps.length === 0) {
+                setStatus('Macro is empty!', 'red');
+                return;
+            }
+
+            let hex = "";
+            let byteCount = 0;
+            
+            for (const step of activeMacro.steps) {
+                if (step.type === 'press') {
+                    const mod = step.modifiers || 0;
+                    const key = step.key || 0;
+                    hex += "01" + mod.toString(16).padStart(2, '0') + key.toString(16).padStart(2, '0');
+                    byteCount += 3;
+                } else if (step.type === 'release') {
+                    hex += "020000";
+                    byteCount += 3;
+                } else if (step.type === 'delay') {
+                    const dur = step.duration || 0;
+                    const high = (dur >> 8) & 0xFF;
+                    const low = dur & 0xFF;
+                    hex += "03" + high.toString(16).padStart(2, '0') + low.toString(16).padStart(2, '0');
+                    byteCount += 3;
+                }
+            }
+            hex += "00";
+            byteCount += 1;
+
+            if (byteCount > 128) {
+                alert(`Macro compiled size (${byteCount} bytes) exceeds maximum size of 128 bytes. Please shorten.`);
+                return;
+            }
+
+            const offset = activeMacro.offset;
+            const cmd = `SET_MACRO ${offset} ${hex}\n`;
+
+            setStatus(`Compiling macro (${byteCount} bytes)...`, 'blue');
+            await writeToSerial(cmd);
+
+            let savedMacros = JSON.parse(localStorage.getItem('macropad_macros') || '{}');
+            savedMacros[`offset_${offset}`] = {
+                name: activeMacro.name,
+                steps: activeMacro.steps
+            };
+            localStorage.setItem('macropad_macros', JSON.stringify(savedMacros));
+
+            appendToLog(`Successfully compiled and uploaded macro: "${activeMacro.name}" at offset ${offset}. Bytes: ${hex}`, 'ok');
+
+            if (selectedBtnIndex !== -1) {
+                config.buttons[selectedBtnIndex].type = 2;
+                config.buttons[selectedBtnIndex].value = offset;
+                
+                const bindCmd = `SET_BTN ${selectedBtnIndex} TYPE 2 VAL ${offset} MOD 0\n`;
+                await writeToSerial(bindCmd);
+                
+                oledLine1.textContent = "MACRO INSTALLED";
+                oledLine2.textContent = `Macro "${activeMacro.name}" bound to Key #${selectedBtnIndex}.`;
+                
+                setTimeout(() => writeToSerial("GET_CONFIG\n"), 250);
+            }
+        });
+
+        // --- Serial Communication Handlers ---
         async function readLoop() {
+            let rxBuffer = "";
             while (port.readable && keepReading) {
                 reader = port.readable.getReader();
                 try {
@@ -506,90 +1256,139 @@
                         const { value, done } = await reader.read();
                         if (done) break;
                         const text = new TextDecoder().decode(value);
-                        handleSerialData(text);
+                        rxBuffer += text;
+
+                        const lines = rxBuffer.split('\n');
+                        rxBuffer = lines.pop();
+
+                        for (const line of lines) {
+                            const trimmedLine = line.trim();
+                            if (trimmedLine.length === 0) continue;
+
+                            if (trimmedLine.startsWith('{')) {
+                                logIncomingJson(trimmedLine);
+                            } else {
+                                appendToLog(trimmedLine, 'rx');
+                            }
+
+                            // Handle OTA response signals
+                            if (trimmedLine.startsWith("OK: OTA_READY")) {
+                                appendToLog("ESP32 ready for OTA binary stream!", "ok");
+                                streamOtaBinaryData();
+                            } else if (trimmedLine.startsWith("OK: OTA_SUCCESS")) {
+                                appendToLog("OTA Flash Success! ESP32 is rebooting into new firmware...", "ok");
+                                updateOtaProgress(100, "Firmware Flashed Successfully! Rebooting device...");
+                                isOtaUploading = false;
+                                startOtaBtn.disabled = false;
+                                setTimeout(() => {
+                                    otaModal.classList.add('hidden');
+                                    otaProgressContainer.classList.add('hidden');
+                                }, 3000);
+                            } else if (trimmedLine.startsWith("ERR: OTA_")) {
+                                appendToLog("OTA Error: " + trimmedLine, "err");
+                                alert("OTA Error: " + trimmedLine);
+                                isOtaUploading = false;
+                                startOtaBtn.disabled = false;
+                            }
+
+                            // Route events
+                            if (trimmedLine.startsWith('{')) {
+                                try {
+                                    const json = JSON.parse(trimmedLine);
+                                    handleConfigUpdate(json);
+                                } catch (e) {
+                                    appendToLog("JSON Parse Error: " + e.message, 'err');
+                                }
+                            } else if (trimmedLine.startsWith("OK:")) {
+                                setStatus(trimmedLine, 'green');
+                            } else if (trimmedLine.startsWith("ERR:")) {
+                                setStatus(trimmedLine, 'red');
+                            }
+                        }
                     }
                 } catch (e) {
                     console.error(e);
+                    appendToLog("Reader thread encountered error: " + e.message, 'err');
                 } finally {
                     reader.releaseLock();
                 }
             }
         }
 
-        let serialBuffer = "";
-        function handleSerialData(text) {
-            serialBuffer += text;
-            const lines = serialBuffer.split('\n');
-            serialBuffer = lines.pop(); // Keep incomplete line
-
-            for (const line of lines) {
-                console.log("RXTX:", line);
-                if (line.trim().startsWith('{')) {
-                    try {
-                        const json = JSON.parse(line);
-                        handleConfigUpdate(json);
-                    } catch (e) {
-                        console.log("JSON Parse Error", e);
-                    }
-                } else if (line.startsWith("OK:")) {
-                    setStatus(line, 'green');
-                } else if (line.startsWith("ERR:")) {
-                    setStatus(line, 'red');
-                }
-            }
+        function logIncomingJson(jsonStr) {
+            appendToLog("Received JSON configuration dataset", 'rx');
         }
 
         async function writeToSerial(data) {
-            if (!port || !port.writable) return;
+            if (!port || !port.writable) {
+                appendToLog(`Write cancelled. Port offline. Message: ${data.trim()}`, 'err');
+                return;
+            }
             writer = port.writable.getWriter();
-            await writer.write(new TextEncoder().encode(data));
+            const dataBuffer = new TextEncoder().encode(data);
+            await writer.write(dataBuffer);
             writer.releaseLock();
+            
+            appendToLog(data.trim(), 'tx');
         }
 
         function handleConfigUpdate(newConfig) {
-            // Merge
             if (newConfig.buttons) {
                 config.buttons = newConfig.buttons;
             }
-            if (newConfig.baseColor) {
-                config.baseColor = newConfig.baseColor;
-                const hex = rgbToHex(config.baseColor[0], config.baseColor[1], config.baseColor[2]);
-                baseColorPicker.value = hex;
-            }
+
             renderGrid();
 
-            // If we have a selected button, refresh editor (unless user is actively typing?)
             if (selectedBtnIndex !== -1) {
-                // Be careful not to overwrite user input while typing... 
-                // For now, let's just refresh to ensure sync
-                selectButton(selectedBtnIndex);
+                const btn = config.buttons[selectedBtnIndex];
+                editorValue.value = btn.value;
+                
+                typeBtns.forEach(b => {
+                    b.classList.remove('bg-blue-600', 'text-white', 'border-blue-500');
+                    b.classList.add('border-slate-700');
+                    if (parseInt(b.dataset.type) === btn.type) {
+                        b.classList.add('bg-blue-600', 'text-white', 'border-blue-500');
+                        b.classList.remove('border-slate-700');
+                    }
+                });
+
+                const mods = btn.modifiers || 0;
+                modifierCbs.forEach(cb => {
+                    const bit = parseInt(cb.dataset.mod);
+                    cb.checked = (mods & bit) !== 0;
+                });
+
+                updateEditorVisibility(btn.type);
+                updateValueHint();
+
+                if (btn.type === 2) {
+                    loadMacroFromStorage(btn.value);
+                }
             }
-            setStatus("Config Loaded", "green");
+            
+            setStatus("Configuration synchronized", "green");
+            oledLine1.textContent = "SYNCHRONIZATION OK";
+            oledLine2.textContent = "Successfully synced device layout configurations.";
         }
 
+        // --- Status Banner Helper ---
         function setStatus(msg, color = 'slate') {
             statusMsg.textContent = msg;
-            statusMsg.className = `text-sm font-mono h-6 transition-colors duration-300 text-${color}-400`;
-            if (color === 'red') console.error(msg);
+            
+            statusMsg.className = "text-xs font-mono h-6 transition-colors duration-300 text-center";
+
+            if (color === 'green') {
+                statusMsg.classList.add('text-emerald-400');
+            } else if (color === 'red') {
+                statusMsg.classList.add('text-rose-400');
+            } else if (color === 'blue') {
+                statusMsg.classList.add('text-sky-400');
+            } else {
+                statusMsg.classList.add('text-slate-500');
+            }
         }
 
-        // --- Utils ---
-        function componentToHex(c) {
-            var hex = c.toString(16);
-            return hex.length == 1 ? "0" + hex : hex;
-        }
-        function rgbToHex(r, g, b) {
-            return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
-        }
-        function hexToRgb(hex) {
-            var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-            return result ? {
-                r: parseInt(result[1], 16),
-                g: parseInt(result[2], 16),
-                b: parseInt(result[3], 16)
-            } : null;
-        }
-
+        // --- XOR Crypt Helper ---
         function xorEncrypt(input) {
             let output = "";
             for (let i = 0; i < input.length; i++) {
@@ -598,7 +1397,6 @@
             }
             return output;
         }
-
     </script>
 </body>
 

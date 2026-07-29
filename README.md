@@ -8,12 +8,8 @@ This project is a custom 8-key Macropad + Rotary Encoder built on the **ESP32-S2
 *   **Hybrid Operation**: Each of the 8 buttons can be individually set to:
     *   **HID Mode**: Sends standard USB Keyboard keystrokes (e.g., 'a', 'b', media keys).
     *   **HomeKit Mode**: Acts as a "Programmable Switch" in Apple HomeKit (Single Press).
-*   **Local Feedback**:
-    *   **8x NeoPixel Strip**: Each button has a corresponding RGB LED.
-    *   **Visual Logic**: LED turns *OFF* when pressed for instant feedback, then restores its color.
-    *   **HomeKit Light**: The entire strip is also exposed as a dimmable, color-changing Lightbulb in HomeKit.
 *   **Dynamic Configuration**:
-    *   Update button mappings, types, and colors on-the-fly via **USB Serial** (no recompiling needed).
+    *   Update button mappings and types on-the-fly via **USB Serial** (no recompiling needed).
     *   Settings are saved to **NVS Flash** and persist across reboots.
 *   **Rotary Encoder**:
     *   Currently mapped to Volume/Media control (HID).
@@ -21,7 +17,6 @@ This project is a custom 8-key Macropad + Rotary Encoder built on the **ESP32-S2
 ## Hardware Pinout
 | Component       | GPIO Pin(s)       | Note                                |
 | :---            | :---              | :---                                |
-| **NeoPixel**    | `12`              | 8-LED Strip (Data In)               |
 | **Encoder**     | `5` (DT), `10` (CLK), `4` (SW) | Rotary Encoder with Pushbutton      |
 | **Buttons 1-8** | `34` - `41`       | Active LOW (Internal Pull-up used)  |
 | **USB**         | Native USB        | GPIO 19/20 (D-/D+) on ESP32-S2      |
@@ -36,7 +31,7 @@ This project is a custom 8-key Macropad + Rotary Encoder built on the **ESP32-S2
 1.  Clone this repository.
 2.  Open the folder in VS Code.
 3.  Click the **PlatformIO Build** (checkmark) icon to compile.
-    *   *Note*: The first build will download libraries (HomeSpan, Adafruit TinyUSB, NeoPixel).
+    *   *Note*: The first build will download libraries (HomeSpan, Adafruit TinyUSB).
 4.  Connect your board in Download Mode (hold Boot, press Reset).
 5.  Click **PlatformIO Upload** (arrow) to flash.
 

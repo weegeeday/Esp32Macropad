@@ -1,10 +1,10 @@
 #ifndef ROTARY_ENCODER_H
 #define ROTARY_ENCODER_H
 
-#include <Adafruit_TinyUSB.h>
 #include <Arduino.h>
+#include <USBHIDConsumerControl.h>
 
-extern Adafruit_USBD_HID usb_hid;
+extern USBHIDConsumerControl ConsumerControl;
 
 class RotaryEncoder {
   int pinA, pinB, pinSW;
@@ -28,10 +28,10 @@ public:
     if (currentStateA != lastStateA && currentStateA == 1) {
       if (digitalRead(pinB) != currentStateA) {
         // Clockwise -> Volume Up
-        ConsumerStep(HID_USAGE_CONSUMER_VOLUME_INCREMENT);
+        ConsumerStep(CONSUMER_CONTROL_VOLUME_INCREMENT);
       } else {
         // Counter-Clockwise -> Volume Down
-        ConsumerStep(HID_USAGE_CONSUMER_VOLUME_DECREMENT);
+        ConsumerStep(CONSUMER_CONTROL_VOLUME_DECREMENT);
       }
     }
     lastStateA = currentStateA;
@@ -44,7 +44,7 @@ public:
       // Press
       buttonPressed = true;
       lastButtonPress = now;
-      ConsumerStep(HID_USAGE_CONSUMER_MUTE);
+      ConsumerStep(CONSUMER_CONTROL_MUTE);
     } else if (!swState && buttonPressed && (now - lastButtonPress > 50)) {
       // Release
       buttonPressed = false;
@@ -54,13 +54,10 @@ public:
 
 private:
   void ConsumerStep(uint16_t usage) {
-    if (!usb_hid.ready())
-      return;
-    usb_hid.sendReport16(
-        0, usage); // report_id 0 is reserved?? No, usually fine if defined.
+    ConsumerControl.press(usage);
     // Wait for it to be sent (simple way)
     delay(10);
-    usb_hid.sendReport16(0, 0); // Release
+    ConsumerControl.release();
   }
 };
 

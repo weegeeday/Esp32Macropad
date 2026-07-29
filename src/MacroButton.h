@@ -2,11 +2,10 @@
 #define MACRO_BUTTON_H
 
 #include "ConfigManager.h"
-#include <Adafruit_TinyUSB.h>
 #include <HomeSpan.h>
+#include <USBHIDKeyboard.h>
 
-extern void setPixelColor(uint8_t r, uint8_t g, uint8_t b, int pixelIdx);
-extern Adafruit_USBD_HID usb_hid;
+extern USBHIDKeyboard Keyboard;
 
 // Macro Opcodes
 #define MACRO_OP_END 0x00
@@ -17,7 +16,6 @@ extern Adafruit_USBD_HID usb_hid;
 class MacroButton : public Service::StatelessProgrammableSwitch {
   int pin;
   int index;
-  int pixelIdx;
   SpanCharacteristic *switchEvent;
 
   // Debounce
@@ -31,9 +29,8 @@ class MacroButton : public Service::StatelessProgrammableSwitch {
   unsigned long waitDuration = 0;
 
 public:
-  MacroButton(int pin, int index, int pixelIdx)
-      : Service::StatelessProgrammableSwitch(), pin(pin), index(index),
-        pixelIdx(pixelIdx) {
+  MacroButton(int pin, int index)
+      : Service::StatelessProgrammableSwitch(), pin(pin), index(index) {
     // Only initialize HomeKit char if mode is HOMEKIT
     // Ideally we should create this Service conditionally in main.cpp
     // But for simplicity/hybrid, we can have the service always present
@@ -75,20 +72,18 @@ public:
   void onPress() {
     ButtonConfig &cfg = globalConfig.config.buttons[index];
 
-    // Feedback: Turn off LED on press
-    setPixelColor(0, 0, 0, pixelIdx);
-
     if (cfg.type == BUTTON_HOMEKIT) {
       // Single Press Event
       switchEvent->setVal(0);
     } else if (cfg.type == BUTTON_HID) {
       // HID Keyboard press with modifiers
-      uint8_t keycode[6] = {0};
-      keycode[0] = (uint8_t)cfg.value;
+      KeyReport report = {0};
+      report.modifiers = cfg.modifiers;
+      report.keys[0] = (uint8_t)cfg.value;
 
       // cfg.modifiers is directly compatible with HID modifier bitmap
       // (Ctrl=1, Shift=2, Alt=4, Gui=8, etc)
-      usb_hid.keyboardReport(0, cfg.modifiers, keycode);
+      Keyboard.sendReport(&report);
     } else if (cfg.type == BUTTON_MACRO) {
       startMacro(cfg.value);
     }
@@ -97,12 +92,9 @@ public:
   void onRelease() {
     ButtonConfig &cfg = globalConfig.config.buttons[index];
 
-    // Feedback: Restore color
-    setPixelColor(cfg.color[0], cfg.color[1], cfg.color[2], pixelIdx);
-
     if (cfg.type == BUTTON_HID) {
       // Release key
-      usb_hid.keyboardRelease(0);
+      Keyboard.releaseAll();
     }
     // Note: We don't stop macros on release, they usually play to completion
     // unless we want hold-to-repeat or stop-on-release logic?
@@ -152,9 +144,10 @@ public:
         uint8_t mod = globalConfig.config.macroBuffer[macroPtr++];
         uint8_t key = globalConfig.config.macroBuffer[macroPtr++];
 
-        uint8_t keycode[6] = {0};
-        keycode[0] = key;
-        usb_hid.keyboardReport(0, mod, keycode);
+        KeyReport report = {0};
+        report.modifiers = mod;
+        report.keys[0] = key;
+        Keyboard.sendReport(&report);
         break;
       }
 
@@ -183,7 +176,7 @@ public:
         // keys. But for basic macros, usually we do: Press A, Wait, Release,
         // Wait...
 
-        usb_hid.keyboardRelease(0);
+        Keyboard.releaseAll();
         break;
       }
 

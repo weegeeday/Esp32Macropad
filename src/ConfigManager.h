@@ -13,12 +13,10 @@ struct ButtonConfig {
   uint8_t type;      // ButtonType enum
   uint16_t value;    // HID usage code or Macro Index
   uint8_t modifiers; // Modifier bitmap (Ctrl=1, Shift=2, Alt=4, Gui=8)
-  uint8_t color[3];  // RGB color for this button
 };
 
 struct GlobalConfig {
   ButtonConfig buttons[MAX_BUTTONS];
-  uint8_t baseColor[3];                 // Base background color for strip
   uint8_t macroBuffer[MAX_MACRO_BYTES]; // Storage for macro sequences
 };
 
@@ -41,11 +39,6 @@ public:
     // Zero out everything first
     memset(&config, 0, sizeof(GlobalConfig));
 
-    // Default: All Green, mix of HID and HK for testing
-    config.baseColor[0] = 0;
-    config.baseColor[1] = 10;
-    config.baseColor[2] = 0;
-
     for (int i = 0; i < MAX_BUTTONS; i++) {
       // Default to HID for all for easier initial testing, or keep mix?
       // Let's keep the mix but ensure valid HID codes are set for all just in
@@ -55,10 +48,6 @@ public:
       // 0x04 is 'a', 0x05 is 'b', etc.
       config.buttons[i].value = 0x04 + i;
       config.buttons[i].modifiers = 0;
-
-      config.buttons[i].color[0] = 0;
-      config.buttons[i].color[1] = 50;
-      config.buttons[i].color[2] = 0;
     }
 
     // Default simple macro at index 0 (if we used it)
@@ -94,23 +83,20 @@ public:
       return;
     }
 
-    // CMD: SET_BTN <idx> TYPE <type> VAL <val> MOD <mod> R <r> G <g> B <b>
+    // CMD: SET_BTN <idx> TYPE <type> VAL <val> MOD <mod>
     if (cmd.startsWith("SET_BTN")) {
       // Try parsing with MOD first (new format)
-      int args[7]; // idx, type, val, mod, r, g, b
+      int args[4]; // idx, type, val, mod
       int scanned = sscanf(
-          cmd.c_str(), "SET_BTN %d TYPE %d VAL %d MOD %d R %d G %d B %d",
-          &args[0], &args[1], &args[2], &args[3], &args[4], &args[5], &args[6]);
+          cmd.c_str(), "SET_BTN %d TYPE %d VAL %d MOD %d",
+          &args[0], &args[1], &args[2], &args[3]);
 
-      if (scanned == 7) {
+      if (scanned == 4) {
         int idx = args[0];
         if (idx >= 0 && idx < MAX_BUTTONS) {
           config.buttons[idx].type = (uint8_t)args[1];
           config.buttons[idx].value = (uint16_t)args[2];
           config.buttons[idx].modifiers = (uint8_t)args[3]; // [NEW]
-          config.buttons[idx].color[0] = (uint8_t)args[4];
-          config.buttons[idx].color[1] = (uint8_t)args[5];
-          config.buttons[idx].color[2] = (uint8_t)args[6];
           save();
           Serial.printf("OK: Updated Btn %d (w/ Mods)\n", idx);
         } else {
@@ -120,20 +106,17 @@ public:
       }
 
       // Fallback for old format (without MOD)
-      // CMD: SET_BTN <idx> TYPE <type> VAL <val> R <r> G <g> B <b>
+      // CMD: SET_BTN <idx> TYPE <type> VAL <val>
       scanned =
-          sscanf(cmd.c_str(), "SET_BTN %d TYPE %d VAL %d R %d G %d B %d",
-                 &args[0], &args[1], &args[2], &args[4], &args[5], &args[6]);
+          sscanf(cmd.c_str(), "SET_BTN %d TYPE %d VAL %d",
+                 &args[0], &args[1], &args[2]);
 
-      if (scanned == 6) {
+      if (scanned == 3) {
         int idx = args[0];
         if (idx >= 0 && idx < MAX_BUTTONS) {
           config.buttons[idx].type = (uint8_t)args[1];
           config.buttons[idx].value = (uint16_t)args[2];
           config.buttons[idx].modifiers = 0; // Default text
-          config.buttons[idx].color[0] = (uint8_t)args[4];
-          config.buttons[idx].color[1] = (uint8_t)args[5];
-          config.buttons[idx].color[2] = (uint8_t)args[6];
           save();
           Serial.printf("OK: Updated Btn %d (No Mods)\n", idx);
         } else {
@@ -145,19 +128,7 @@ public:
       return;
     }
 
-    // CMD: SET_BASE R <r> G <g> B <b>
-    if (cmd.startsWith("SET_BASE")) {
-      int r, g, b;
-      int scanned = sscanf(cmd.c_str(), "SET_BASE R %d G %d B %d", &r, &g, &b);
-      if (scanned == 3) {
-        config.baseColor[0] = (uint8_t)r;
-        config.baseColor[1] = (uint8_t)g;
-        config.baseColor[2] = (uint8_t)b;
-        save();
-        Serial.println("OK: Updated Base Color");
-      }
-      return;
-    }
+
 
     // CMD: SET_MACRO <offset> <hex_data>
     // Example: SET_MACRO 0 01020304...
@@ -202,22 +173,12 @@ public:
   void printConfig() {
     JsonDocument doc;
 
-    JsonArray baseColor = doc["baseColor"].to<JsonArray>();
-    baseColor.add(config.baseColor[0]);
-    baseColor.add(config.baseColor[1]);
-    baseColor.add(config.baseColor[2]);
-
     JsonArray buttons = doc["buttons"].to<JsonArray>();
     for (int i = 0; i < MAX_BUTTONS; i++) {
       JsonObject btn = buttons.add<JsonObject>();
       btn["type"] = config.buttons[i].type;
       btn["value"] = config.buttons[i].value;
       btn["modifiers"] = config.buttons[i].modifiers;
-
-      JsonArray btnColor = btn["color"].to<JsonArray>();
-      btnColor.add(config.buttons[i].color[0]);
-      btnColor.add(config.buttons[i].color[1]);
-      btnColor.add(config.buttons[i].color[2]);
     }
 
     // We don't print the huge macro buffer by default in JSON to save

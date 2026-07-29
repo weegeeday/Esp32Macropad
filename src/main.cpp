@@ -1,20 +1,20 @@
-#include <Adafruit_NeoPixel.h>
-#include <Adafruit_TinyUSB.h>
 #include <Arduino.h>
 #include <HomeSpan.h>
+#include <USB.h>
+#include <USBHIDConsumerControl.h>
+#include <USBHIDKeyboard.h>
+#include <Update.h>
+#include "esp_system.h"
+
+#if defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32S3)
+#include "soc/rtc_cntl_reg.h"
+#endif
 
 #include "ConfigManager.h"
 #include "MacroButton.h"
-#include "MacropadLight.h"
-
 #include "RotaryEncoder.h"
 
 // Pin Definitions
-#ifdef PIN_NEOPIXEL
-#undef PIN_NEOPIXEL
-#endif
-#define MACROPAD_NEOPIXEL 12
-// Using specific name to avoid redefining standard PIN_NEOPIXEL if it leaks
 
 // Rotary Encoder
 #define PIN_ENC_A 5
@@ -24,47 +24,29 @@
 // Buttons
 const int buttonPins[8] = {34, 35, 36, 37, 38, 39, 40, 41};
 
-#define NUM_PIXELS 8
-
-Adafruit_NeoPixel pixels(NUM_PIXELS, MACROPAD_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 ConfigManager globalConfig;
-Adafruit_USBD_HID usb_hid;
+USBHIDKeyboard Keyboard;
+USBHIDConsumerControl ConsumerControl;
 RotaryEncoder encoder(PIN_ENC_A, PIN_ENC_B, PIN_ENC_SW);
 MacroButton *buttons[8];
 
+// OTA Firmware Upload State
+bool isOtaMode = false;
+size_t otaTotalSize = 0;
+size_t otaReceivedSize = 0;
+unsigned long otaLastByteTime = 0;
+
 String xorDecrypt(String hexInput);
-
-// HID Report Descriptor for a standard keyboard
-uint8_t const desc_hid_report[] = {TUD_HID_REPORT_DESC_KEYBOARD()};
-
-void setupNeoPixels() {
-  pixels.begin();
-  pixels.setBrightness(50);
-  pixels.show(); // Initialize all pixels to 'off'
-}
-
-void setPixelColor(uint8_t r, uint8_t g, uint8_t b, int pixelIdx = -1) {
-  if (pixelIdx < 0) {
-    for (int i = 0; i < NUM_PIXELS; i++) {
-      // Don't overwrite brightness, use Color()
-      pixels.setPixelColor(i, pixels.Color(r, g, b));
-    }
-  } else if (pixelIdx < NUM_PIXELS) {
-    pixels.setPixelColor(pixelIdx, pixels.Color(r, g, b));
-  }
-  pixels.show();
-}
+void rebootToBootloader();
+void handleOtaStream();
 
 void pinsetup() {
-  // NeoPixel handled by library
-
   // Rotary Encoder
   pinMode(PIN_ENC_A, INPUT_PULLUP);
   pinMode(PIN_ENC_B, INPUT_PULLUP);
   pinMode(PIN_ENC_SW, INPUT_PULLUP);
 
-  // Buttons Matrix handled by MacroButton class, but initialized here ensures
-  // pullups are set early
+  // Buttons Matrix handled by MacroButton class, but initialized here ensures pullups are set early
   for (int i = 0; i < 8; i++) {
     pinMode(buttonPins[i], INPUT_PULLUP);
   }
@@ -74,36 +56,53 @@ void setup() {
   Serial.begin(115200);
 
   // HID Setup
-  usb_hid.setPollInterval(10);
-  usb_hid.setReportDescriptor(desc_hid_report, sizeof(desc_hid_report));
-  usb_hid.begin();
+  Keyboard.begin();
+  ConsumerControl.begin();
+  USB.begin();
 
   // Config Setup
   globalConfig.begin();
 
   pinsetup();
-  setupNeoPixels();
+
+  // Disable HomeSpan's built-in Serial CLI so it doesn't intercept custom serial commands
+  homeSpan.setSerialInputDisable(true);
+  homeSpan.setPairingCode("46637726");
+  homeSpan.setControlPin(0); // Disable control pin to prevent floating-pin resets on boot
+
+  // Disable WiFi modem sleep EVERY TIME WiFi connects (including on reboot)
+  homeSpan.setWifiCallbackAll([](int status) {
+    WiFi.setSleep(false);
+    Serial.printf("OK: WiFi Connected! IP: %s\n", WiFi.localIP().toString().c_str());
+  });
 
   // Initialize HomeSpan
-  homeSpan.begin(Category::Bridges, "Macropad Bridge");
+  homeSpan.begin(Category::Bridges, "Macropad Bridge", "macropad-bridge");
 
-  // Bridge Accessory
+  // Main Bridge Accessory
   new SpanAccessory();
   new Service::AccessoryInformation();
   new Characteristic::Identify();
+  new Characteristic::Name("Macropad Bridge");
+  new Characteristic::Manufacturer("Espressif");
+  new Characteristic::Model("ESP32-S2 Bridge");
+  new Characteristic::SerialNumber("MP-BRIDGE-01");
+  new Characteristic::FirmwareRevision("1.0.0");
 
-  // Light Accessory (Global Control)
-  new MacropadLight();
-
-  // Button Accessories
-  new SpanAccessory();
-  new Service::AccessoryInformation();
-  new Characteristic::Identify();
-  new Characteristic::Name("Macropad Buttons");
-
+  // Create 8 individual Bridged Button Accessories with unique serial numbers for HomeKit
   for (int i = 0; i < 8; i++) {
-    // Buttons are now stored globally to be polled in loop
-    buttons[i] = new MacroButton(buttonPins[i], i, i);
+    new SpanAccessory();
+    new Service::AccessoryInformation();
+    new Characteristic::Identify();
+    String btnName = "Macropad Button " + String(i + 1);
+    new Characteristic::Name(btnName.c_str());
+    new Characteristic::Manufacturer("Espressif");
+    new Characteristic::Model("Macropad Button");
+    String sn = "MP-BTN-0" + String(i + 1);
+    new Characteristic::SerialNumber(sn.c_str());
+    new Characteristic::FirmwareRevision("1.0.0");
+
+    buttons[i] = new MacroButton(buttonPins[i], i);
   }
 
   encoder.begin();
@@ -118,12 +117,36 @@ void loop() {
       buttons[i]->loop();
   }
 
+  // Handle OTA Flashing Stream
+  if (isOtaMode) {
+    handleOtaStream();
+    return;
+  }
+
   // Check config updates from Serial
   if (Serial.available()) {
     String cmd = Serial.readStringUntil('\n');
     cmd.trim();
 
-    if (cmd.startsWith("SET_WIFI")) {
+    if (cmd.startsWith("START_OTA")) {
+      // START_OTA <size>
+      int space = cmd.indexOf(' ');
+      if (space > 0) {
+        otaTotalSize = (size_t)cmd.substring(space + 1).toInt();
+        if (otaTotalSize > 0 && Update.begin(otaTotalSize)) {
+          isOtaMode = true;
+          otaReceivedSize = 0;
+          otaLastByteTime = millis();
+          Serial.println("OK: OTA_READY");
+        } else {
+          Serial.println("ERR: OTA_BEGIN_FAILED");
+        }
+      } else {
+        Serial.println("ERR: Invalid Format");
+      }
+    } else if (cmd.equalsIgnoreCase("REBOOT_BOOTLOADER")) {
+      rebootToBootloader();
+    } else if (cmd.startsWith("SET_WIFI")) {
       // SET_WIFI <HEX_SSID> <HEX_PASS>
       int firstSpace = cmd.indexOf(' ');
       int secondSpace = cmd.indexOf(' ', firstSpace + 1);
@@ -148,6 +171,56 @@ void loop() {
       globalConfig.processSerialCommand(cmd);
     }
   }
+}
+
+void handleOtaStream() {
+  uint8_t buf[512];
+  while (Serial.available() > 0) {
+    int toRead = min(Serial.available(), (int)sizeof(buf));
+    int readBytes = Serial.readBytes((char *)buf, toRead);
+    if (readBytes > 0) {
+      otaLastByteTime = millis();
+      size_t written = Update.write(buf, readBytes);
+      if (written != (size_t)readBytes) {
+        Serial.println("ERR: OTA_WRITE_FAILED");
+        Update.abort();
+        isOtaMode = false;
+        return;
+      }
+      otaReceivedSize += written;
+
+      // Report progress periodically
+      Serial.printf("OK: OTA_PROGRESS %u/%u\n", otaReceivedSize, otaTotalSize);
+
+      if (otaReceivedSize >= otaTotalSize) {
+        if (Update.end(true)) {
+          Serial.println("OK: OTA_SUCCESS Rebooting...");
+          delay(500);
+          ESP.restart();
+        } else {
+          Serial.println("ERR: OTA_END_FAILED");
+        }
+        isOtaMode = false;
+        return;
+      }
+    }
+  }
+
+  // Timeout protection: if no bytes arrive for 10 seconds, abort OTA mode
+  if (millis() - otaLastByteTime > 10000) {
+    Serial.println("ERR: OTA_TIMEOUT");
+    Update.abort();
+    isOtaMode = false;
+  }
+}
+
+void rebootToBootloader() {
+  Serial.println("OK: Rebooting to ROM Bootloader Mode...");
+  delay(300);
+#if defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32S3)
+  REG_WRITE(RTC_CNTL_OPTION1_REG, RTC_CNTL_FORCE_DOWNLOAD_BOOT);
+#endif
+  esp_restart();
 }
 
 String xorDecrypt(String hexInput) {
